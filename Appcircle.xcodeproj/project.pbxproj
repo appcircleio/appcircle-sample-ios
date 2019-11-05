@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C316CFD62371563E00EAFD54 /* ViewController2.m in Sources */ = {isa = PBXBuildFile; fileRef = C316CFD52371563E00EAFD54 /* ViewController2.m */; };
 		C335FD492347815B00627CB4 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD482347815B00627CB4 /* AppDelegate.m */; };
 		C335FD4C2347815B00627CB4 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD4B2347815B00627CB4 /* SceneDelegate.m */; };
 		C335FD4F2347815B00627CB4 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD4E2347815B00627CB4 /* ViewController.m */; };
@@ -36,6 +37,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C316CFD42371563E00EAFD54 /* ViewController2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController2.h; sourceTree = "<group>"; };
+		C316CFD52371563E00EAFD54 /* ViewController2.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController2.m; sourceTree = "<group>"; };
 		C335FD442347815B00627CB4 /* Appcircle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Appcircle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C335FD472347815B00627CB4 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		C335FD482347815B00627CB4 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -110,6 +113,8 @@
 				C335FD4B2347815B00627CB4 /* SceneDelegate.m */,
 				C335FD4D2347815B00627CB4 /* ViewController.h */,
 				C335FD4E2347815B00627CB4 /* ViewController.m */,
+				C316CFD42371563E00EAFD54 /* ViewController2.h */,
+				C316CFD52371563E00EAFD54 /* ViewController2.m */,
 				C335FD502347815B00627CB4 /* Main.storyboard */,
 				C335FD532347815C00627CB4 /* Assets.xcassets */,
 				C335FD552347815C00627CB4 /* LaunchScreen.storyboard */,
@@ -269,6 +274,7 @@
 			files = (
 				C335FD4F2347815B00627CB4 /* ViewController.m in Sources */,
 				C335FD492347815B00627CB4 /* AppDelegate.m in Sources */,
+				C316CFD62371563E00EAFD54 /* ViewController2.m in Sources */,
 				C335FD5A2347815C00627CB4 /* main.m in Sources */,
 				C335FD4C2347815B00627CB4 /* SceneDelegate.m in Sources */,
 			);
@@ -448,7 +454,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.appcircle.Appcircle;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -468,7 +474,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.appcircle.Appcircle;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
