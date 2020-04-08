@@ -1,1 +1,1 @@
-# appcircle-sample-ios
+# Appcircle Sample App for iOS
