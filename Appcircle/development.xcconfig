@@ -1,0 +1,13 @@
+//
+//  development.xcconfig
+//  Appcircle
+//
+//  Created by Dogan Ekici on 20.04.2020.
+//  Copyright © 2020 Dogan Ekici. All rights reserved.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+API_URL=Development URL
+API_KEY=Development KEY
