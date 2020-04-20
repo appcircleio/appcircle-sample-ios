@@ -1,4 +1,4 @@
-FILE="development.xcconfig"
+FILE="$1"
 
 if [ ! -f "$FILE" ]; then
     echo ".xcconfig file not found!"
