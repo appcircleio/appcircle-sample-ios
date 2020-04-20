@@ -18,7 +18,8 @@ do
    if [ -n "${!i}" ]; then
    	echo "Key : ${i}"
    	echo "Value : ${!i}"
-   	sed -i '' "s/\(^${i}=\).*/\1${!i}/" "$FILE"
+    
+   	sed -i '' "s/\(^${i}=\).*/\1$( echo "${!i}" | sed -e 's/[\/&]/\\&/g' )/" "$FILE"
    fi
 done
 exit 0;
