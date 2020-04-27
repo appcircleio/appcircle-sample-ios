@@ -17,7 +17,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
    
-    self.lblVersion.text =  [NSString stringWithFormat:@"v%@",[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"]];;
+    self.lblVersion.text =  [NSString stringWithFormat:@"v%@",[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"]];
+    self.lblApi.text = [NSString stringWithFormat:@"Api URL: %@\nApi KEY: %@",[[NSBundle mainBundle] objectForInfoDictionaryKey:@"API_URL"],[[NSBundle mainBundle] objectForInfoDictionaryKey:@"API_KEY"]];
     // Do any additional setup after loading the view.
 }
 

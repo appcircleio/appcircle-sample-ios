@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14868" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="7aF-YI-2t0">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="15705" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="7aF-YI-2t0">
     <device id="retina6_1" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14824"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="15706"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -83,13 +83,22 @@
                                     <constraint firstAttribute="width" constant="80" id="oNl-rM-Q1m"/>
                                 </constraints>
                             </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="sVQ-zL-X3b">
+                                <rect key="frame" x="20" y="834" width="374" height="18"/>
+                                <fontDescription key="fontDescription" type="system" weight="medium" pointSize="15"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
                         <constraints>
                             <constraint firstItem="JHs-nA-rYW" firstAttribute="top" secondItem="8FF-zy-vuc" secondAttribute="bottom" constant="8" id="0ya-9F-KQv"/>
                             <constraint firstItem="JHs-nA-rYW" firstAttribute="leading" secondItem="JoR-XE-yvE" secondAttribute="leading" id="399-U0-d8k"/>
+                            <constraint firstItem="sVQ-zL-X3b" firstAttribute="bottom" secondItem="JoR-XE-yvE" secondAttribute="bottom" constant="-10" id="8kZ-UM-zal"/>
                             <constraint firstItem="DL3-Qa-VWz" firstAttribute="leading" secondItem="JoR-XE-yvE" secondAttribute="leading" id="9H6-BC-MVH"/>
+                            <constraint firstItem="sVQ-zL-X3b" firstAttribute="leading" secondItem="JoR-XE-yvE" secondAttribute="leading" constant="20" id="GUs-f9-TsZ"/>
                             <constraint firstItem="DL3-Qa-VWz" firstAttribute="top" secondItem="JHs-nA-rYW" secondAttribute="bottom" constant="8" id="Leh-rL-jaf"/>
+                            <constraint firstItem="JoR-XE-yvE" firstAttribute="trailing" secondItem="sVQ-zL-X3b" secondAttribute="trailing" constant="20" id="ZQb-Ch-TiO"/>
                             <constraint firstItem="8FF-zy-vuc" firstAttribute="centerX" secondItem="JHs-nA-rYW" secondAttribute="centerX" id="fbv-wS-7t1"/>
                             <constraint firstItem="DL3-Qa-VWz" firstAttribute="trailing" secondItem="JoR-XE-yvE" secondAttribute="trailing" id="hpm-4Y-adh"/>
                             <constraint firstItem="JoR-XE-yvE" firstAttribute="trailing" secondItem="JHs-nA-rYW" secondAttribute="trailing" id="lPI-fN-W8e"/>
@@ -99,6 +108,7 @@
                     </view>
                     <navigationItem key="navigationItem" title="Page 2" id="GN7-V9-c7e"/>
                     <connections>
+                        <outlet property="lblApi" destination="sVQ-zL-X3b" id="K5W-tl-fAZ"/>
                         <outlet property="lblVersion" destination="DL3-Qa-VWz" id="VEF-4v-FJT"/>
                     </connections>
                 </viewController>

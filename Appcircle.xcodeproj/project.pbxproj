@@ -57,6 +57,7 @@
 		C335FD6A2347815C00627CB4 /* AppcircleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppcircleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C335FD6E2347815C00627CB4 /* AppcircleUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppcircleUITests.m; sourceTree = "<group>"; };
 		C335FD702347815C00627CB4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C37BF8EA244D930B00D88DBC /* development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = development.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +121,7 @@
 				C335FD552347815C00627CB4 /* LaunchScreen.storyboard */,
 				C335FD582347815C00627CB4 /* Info.plist */,
 				C335FD592347815C00627CB4 /* main.m */,
+				C37BF8EA244D930B00D88DBC /* development.xcconfig */,
 			);
 			path = Appcircle;
 			sourceTree = "<group>";
@@ -333,6 +335,7 @@
 /* Begin XCBuildConfiguration section */
 		C335FD712347815C00627CB4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -391,6 +394,7 @@
 		};
 		C335FD722347815C00627CB4 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -443,6 +447,7 @@
 		};
 		C335FD742347815C00627CB4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
@@ -463,6 +468,7 @@
 		};
 		C335FD752347815C00627CB4 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
@@ -483,6 +489,7 @@
 		};
 		C335FD772347815C00627CB4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -503,6 +510,7 @@
 		};
 		C335FD782347815C00627CB4 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -523,6 +531,7 @@
 		};
 		C335FD7A2347815C00627CB4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = T9P2R7YH4K;
@@ -541,6 +550,7 @@
 		};
 		C335FD7B2347815C00627CB4 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = T9P2R7YH4K;
