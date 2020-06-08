@@ -31,9 +31,17 @@
     // UI tests must launch the application that they test.
     XCUIApplication *app = [[XCUIApplication alloc] init];
     [app launch];
-
-    // Use recording to get started writing UI tests.
-    // Use XCTAssert and related functions to verify your tests produce the correct results.
+    
+    XCTAssertTrue(app.buttons[@"Next Page"].exists);
+    [app.buttons[@"Next Page"] tap];
+    XCTAssertTrue(app.staticTexts[@"Appcircle.io"].exists);
+    
+    sleep(1);
+    
+    XCTAttachment *attachment = [XCTAttachment attachmentWithScreenshot:[app screenshot]];
+    attachment.name = @"Attachment";
+    attachment.lifetime = XCTAttachmentLifetimeKeepAlways;
+    [self addAttachment:attachment];
 }
 
 - (void)testLaunchPerformance {

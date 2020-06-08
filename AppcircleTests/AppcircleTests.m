@@ -27,6 +27,26 @@
     // Use XCTAssert and related functions to verify your tests produce the correct results.
 }
 
+- (void)testArrayCount {
+    NSArray *array = [[NSArray alloc] initWithObjects:@"First",@"Second", nil];
+    XCTAssertEqual(array.count, 2);
+}
+
+- (void)testArrayFirstObject {
+    NSArray *array = [[NSArray alloc] initWithObjects:@"First",@"Second", nil];
+    XCTAssertEqual(array.firstObject, @"First");
+}
+
+- (void)testArrayLastObject {
+    NSArray *array = [[NSArray alloc] initWithObjects:@"First",@"Second", nil];
+    XCTAssertEqual(array.lastObject, @"Second");
+}
+
+- (void)testType {
+    NSArray *array = [[NSArray alloc] initWithObjects:@"First",@"Second", nil];
+    XCTAssert([array isKindOfClass:[NSArray class]]);
+}
+
 - (void)testPerformanceExample {
     // This is an example of a performance test case.
     [self measureBlock:^{
