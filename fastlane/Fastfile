@@ -21,6 +21,9 @@ platform :ios do
   end
   
   lane :build do
-    build_app(scheme: "Appcircle")
+    build_app(
+    	export_method: "development",
+    	export_xcargs: "-allowProvisioningUpdates",
+    	scheme: "Appcircle")
   end
 end
