@@ -19,4 +19,8 @@ platform :ios do
   lane :tests do
     run_tests(scheme: "Appcircle")
   end
+  
+  lane :build do
+    build_app(scheme: "Appcircle")
+  end
 end
