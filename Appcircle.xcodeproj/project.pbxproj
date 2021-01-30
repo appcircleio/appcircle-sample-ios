@@ -7,6 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		463BA16325C5E75B002F3572 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD4E2347815B00627CB4 /* ViewController.m */; };
+		463BA16425C5E75B002F3572 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD482347815B00627CB4 /* AppDelegate.m */; };
+		463BA16525C5E75B002F3572 /* ViewController2.m in Sources */ = {isa = PBXBuildFile; fileRef = C316CFD52371563E00EAFD54 /* ViewController2.m */; };
+		463BA16625C5E75B002F3572 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD592347815C00627CB4 /* main.m */; };
+		463BA16725C5E75B002F3572 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD4B2347815B00627CB4 /* SceneDelegate.m */; };
+		463BA16A25C5E75B002F3572 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C335FD552347815C00627CB4 /* LaunchScreen.storyboard */; };
+		463BA16B25C5E75B002F3572 /* SF-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 46B55F3525B05854005FB93D /* SF-Info.plist */; };
+		463BA16C25C5E75B002F3572 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C335FD532347815C00627CB4 /* Assets.xcassets */; };
+		463BA16D25C5E75B002F3572 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C335FD502347815B00627CB4 /* Main.storyboard */; };
 		46B55F3625B05855005FB93D /* SF-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 46B55F3525B05854005FB93D /* SF-Info.plist */; };
 		C316CFD62371563E00EAFD54 /* ViewController2.m in Sources */ = {isa = PBXBuildFile; fileRef = C316CFD52371563E00EAFD54 /* ViewController2.m */; };
 		C335FD492347815B00627CB4 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD482347815B00627CB4 /* AppDelegate.m */; };
@@ -38,6 +47,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		463BA17225C5E75B002F3572 /* Smartface.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smartface.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		46B55F3525B05854005FB93D /* SF-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "SF-Info.plist"; sourceTree = "<group>"; };
 		C316CFD42371563E00EAFD54 /* ViewController2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController2.h; sourceTree = "<group>"; };
 		C316CFD52371563E00EAFD54 /* ViewController2.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController2.m; sourceTree = "<group>"; };
@@ -63,6 +73,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		463BA16825C5E75B002F3572 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C335FD412347815B00627CB4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -103,6 +120,7 @@
 				C335FD442347815B00627CB4 /* Appcircle.app */,
 				C335FD5F2347815C00627CB4 /* AppcircleTests.xctest */,
 				C335FD6A2347815C00627CB4 /* AppcircleUITests.xctest */,
+				463BA17225C5E75B002F3572 /* Smartface.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -150,6 +168,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		463BA16125C5E75B002F3572 /* Smartface */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 463BA16E25C5E75B002F3572 /* Build configuration list for PBXNativeTarget "Smartface" */;
+			buildPhases = (
+				463BA16225C5E75B002F3572 /* Sources */,
+				463BA16825C5E75B002F3572 /* Frameworks */,
+				463BA16925C5E75B002F3572 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Smartface;
+			productName = Appcircle;
+			productReference = 463BA17225C5E75B002F3572 /* Smartface.app */;
+			productType = "com.apple.product-type.application";
+		};
 		C335FD432347815B00627CB4 /* Appcircle */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C335FD732347815C00627CB4 /* Build configuration list for PBXNativeTarget "Appcircle" */;
@@ -241,11 +276,23 @@
 				C335FD432347815B00627CB4 /* Appcircle */,
 				C335FD5E2347815C00627CB4 /* AppcircleTests */,
 				C335FD692347815C00627CB4 /* AppcircleUITests */,
+				463BA16125C5E75B002F3572 /* Smartface */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		463BA16925C5E75B002F3572 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				463BA16A25C5E75B002F3572 /* LaunchScreen.storyboard in Resources */,
+				463BA16B25C5E75B002F3572 /* SF-Info.plist in Resources */,
+				463BA16C25C5E75B002F3572 /* Assets.xcassets in Resources */,
+				463BA16D25C5E75B002F3572 /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C335FD422347815B00627CB4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -274,6 +321,18 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		463BA16225C5E75B002F3572 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				463BA16325C5E75B002F3572 /* ViewController.m in Sources */,
+				463BA16425C5E75B002F3572 /* AppDelegate.m in Sources */,
+				463BA16525C5E75B002F3572 /* ViewController2.m in Sources */,
+				463BA16625C5E75B002F3572 /* main.m in Sources */,
+				463BA16725C5E75B002F3572 /* SceneDelegate.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C335FD402347815B00627CB4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -337,6 +396,69 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		463BA16F25C5E75B002F3572 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = SFAppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				INFOPLIST_FILE = "Appcircle/SF-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = io.SmartaceApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		463BA17025C5E75B002F3572 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = SFAppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				INFOPLIST_FILE = "Appcircle/SF-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = io.SmartaceApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		463BA17125C5E75B002F3572 /* SFRelease */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = SFAppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				INFOPLIST_FILE = "Appcircle/SF-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.2;
+				PRODUCT_BUNDLE_IDENTIFIER = io.SmartaceApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = SFRelease;
+		};
 		46B55F2025B0579D005FB93D /* SFRelease */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
@@ -688,6 +810,16 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		463BA16E25C5E75B002F3572 /* Build configuration list for PBXNativeTarget "Smartface" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				463BA16F25C5E75B002F3572 /* Debug */,
+				463BA17025C5E75B002F3572 /* Release */,
+				463BA17125C5E75B002F3572 /* SFRelease */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C335FD3F2347815B00627CB4 /* Build configuration list for PBXProject "Appcircle" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

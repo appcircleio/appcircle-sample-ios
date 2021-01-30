@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C335FD432347815B00627CB4"
-               BuildableName = "Appcircle.app"
-               BlueprintName = "Appcircle"
+               BlueprintIdentifier = "463BA16125C5E75B002F3572"
+               BuildableName = "Smartface.app"
+               BlueprintName = "Smartface"
                ReferencedContainer = "container:Appcircle.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -31,7 +31,7 @@
       </Testables>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "SFRelease"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -44,9 +44,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C335FD432347815B00627CB4"
-            BuildableName = "Appcircle.app"
-            BlueprintName = "Appcircle"
+            BlueprintIdentifier = "463BA16125C5E75B002F3572"
+            BuildableName = "Smartface.app"
+            BlueprintName = "Smartface"
             ReferencedContainer = "container:Appcircle.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -57,16 +57,6 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C335FD432347815B00627CB4"
-            BuildableName = "Appcircle.app"
-            BlueprintName = "Appcircle"
-            ReferencedContainer = "container:Appcircle.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
