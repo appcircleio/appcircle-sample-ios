@@ -452,7 +452,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				INFOPLIST_FILE = Appcircle/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -473,7 +473,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				INFOPLIST_FILE = Appcircle/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -493,7 +493,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				INFOPLIST_FILE = AppcircleTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -514,7 +514,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				INFOPLIST_FILE = AppcircleTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -534,7 +534,7 @@
 			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				INFOPLIST_FILE = AppcircleUITests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -553,7 +553,7 @@
 			baseConfigurationReference = C37BF8EA244D930B00D88DBC /* development.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = T9P2R7YH4K;
+				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				INFOPLIST_FILE = AppcircleUITests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
