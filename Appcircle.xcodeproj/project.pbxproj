@@ -3,10 +3,11 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		455EAE302A161BFD006F8B39 /* RepeatoCapture in Frameworks */ = {isa = PBXBuildFile; productRef = 455EAE2F2A161BFD006F8B39 /* RepeatoCapture */; };
 		C316CFD62371563E00EAFD54 /* ViewController2.m in Sources */ = {isa = PBXBuildFile; fileRef = C316CFD52371563E00EAFD54 /* ViewController2.m */; };
 		C335FD492347815B00627CB4 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD482347815B00627CB4 /* AppDelegate.m */; };
 		C335FD4C2347815B00627CB4 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = C335FD4B2347815B00627CB4 /* SceneDelegate.m */; };
@@ -65,6 +66,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				455EAE302A161BFD006F8B39 /* RepeatoCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +162,9 @@
 			dependencies = (
 			);
 			name = Appcircle;
+			packageProductDependencies = (
+				455EAE2F2A161BFD006F8B39 /* RepeatoCapture */,
+			);
 			productName = Appcircle;
 			productReference = C335FD442347815B00627CB4 /* Appcircle.app */;
 			productType = "com.apple.product-type.application";
@@ -231,6 +236,9 @@
 				Base,
 			);
 			mainGroup = C335FD3B2347815B00627CB4;
+			packageReferences = (
+				455EAE2E2A161BFD006F8B39 /* XCRemoteSwiftPackageReference "ios-connector" */,
+			);
 			productRefGroup = C335FD452347815B00627CB4 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -607,6 +615,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		455EAE2E2A161BFD006F8B39 /* XCRemoteSwiftPackageReference "ios-connector" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/repeato-qa/ios-connector";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		455EAE2F2A161BFD006F8B39 /* RepeatoCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 455EAE2E2A161BFD006F8B39 /* XCRemoteSwiftPackageReference "ios-connector" */;
+			productName = RepeatoCapture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C335FD3C2347815B00627CB4 /* Project object */;
 }
