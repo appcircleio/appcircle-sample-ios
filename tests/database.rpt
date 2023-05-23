@@ -1,0 +1,85 @@
+{
+  "version": 15,
+  "tests": [],
+  "testBatches": [
+    {
+      "id": "0",
+      "title": "Default Test Batch",
+      "tests": [
+        "3cfe6270-248d-084c-c540-17958cd0f0d5"
+      ],
+      "exceptionHandlers": []
+    },
+    {
+      "id": "d914a2b4-d2bc-bb28-56fe-7dbafc2bc893",
+      "title": "iOS Tests",
+      "tests": [
+        "834ed495-79f4-7aeb-17db-e038ffba9f3c"
+      ],
+      "exceptionHandlers": []
+    },
+    {
+      "id": "65525a4e-7a5c-49cc-b328-2f06aef95f8d",
+      "title": "Android Tests",
+      "tests": [
+        "3cfe6270-248d-084c-c540-17958cd0f0d5"
+      ],
+      "exceptionHandlers": []
+    }
+  ],
+  "folders": {
+    "id": "ROOT_TREE_NODE_ID",
+    "title": "All tests",
+    "active": false,
+    "expanded": true,
+    "children": [
+      {
+        "id": "default-node",
+        "title": "Recorded tests",
+        "active": false,
+        "expanded": true,
+        "children": [
+          "3cfe6270-248d-084c-c540-17958cd0f0d5",
+          "834ed495-79f4-7aeb-17db-e038ffba9f3c"
+        ]
+      }
+    ]
+  },
+  "batchRunner": {
+    "testBatch": "65525a4e-7a5c-49cc-b328-2f06aef95f8d",
+    "currentExceptionHandlerIndex": 0,
+    "currentTestIndex": 0,
+    "testRunner": {
+      "id": "26bb2f48-b888-a3b9-2473-75e3970e0464",
+      "currentStepIndex": 0,
+      "stopExecutionOnStepIndex": -1,
+      "defaultSearchTimeout": 8000,
+      "subTestRunners": []
+    },
+    "batchRun": {
+      "id": "c243c4c6-aa3b-2438-9753-743a25aec361",
+      "batchId": "0",
+      "title": "Default Test Batch",
+      "tests": [
+        "3cfe6270-248d-084c-c540-17958cd0f0d5"
+      ],
+      "testRuns": [],
+      "createdOn": 1683725665221,
+      "stats": {
+        "totalCount": 1,
+        "successCount": 1,
+        "duration": "00:00:00",
+        "failCount": 0,
+        "stepsCount": 1
+      }
+    },
+    "exportMaxImageSize": 800
+  },
+  "recorder": {
+    "isRecording": false,
+    "testDirty": false
+  },
+  "schedules": [],
+  "advancedConfig": "",
+  "tags": []
+}

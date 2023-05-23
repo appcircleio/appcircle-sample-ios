@@ -1,0 +1,109 @@
+{
+    "version": 4,
+    "id": "834ed495-79f4-7aeb-17db-e038ffba9f3c",
+    "title": "iOS Test",
+    "steps": [
+        {
+            "id": "bddea605-bad3-4722-7b9c-eb69b683638c",
+            "type": "startApp",
+            "optional": false,
+            "createdOn": 1684399321061,
+            "packageName": "",
+            "activityName": "",
+            "deleteAppData": false,
+            "grantPermissions": [],
+            "allPermissions": [],
+            "grantIosPermissions": [
+                "all",
+                "calendar",
+                "contacts-limited",
+                "contacts",
+                "location-always",
+                "location",
+                "photos-add",
+                "photos",
+                "media-library",
+                "microphone",
+                "motion",
+                "reminders",
+                "siri"
+            ],
+            "allIosPermissions": [
+                "all",
+                "calendar",
+                "contacts-limited",
+                "contacts",
+                "location-always",
+                "location",
+                "photos-add",
+                "photos",
+                "media-library",
+                "microphone",
+                "motion",
+                "reminders",
+                "siri"
+            ],
+            "os": "iOS",
+            "iosBundleId": "io.appcircle.dashboard"
+        }
+    ],
+    "deviceData": {
+        "os": "iOS",
+        "size": "780x1688",
+        "serial": "7ADB2869-100B-4BF6-B3D0-259764639274",
+        "name": "iPhone 14",
+        "brand": "Apple",
+        "rotationVars": {
+            "portrait": "ROTATION_0",
+            "landscape": "ROTATION_90",
+            "upsideDown": "ROTATION_180",
+            "seascape": "ROTATION_270"
+        },
+        "isSimulator": true
+    },
+    "createdOn": 1684399313641,
+    "changedOn": 1684399723630,
+    "isWorkingCopy": false,
+    "testRuns": [
+        {
+            "id": "4f45656c-f1c7-d457-1136-eb2c2cd80dfa",
+            "date": 1684402812731,
+            "completed": true,
+            "stepResults": [
+                {
+                    "id": "87bd709b-2776-7dd0-7874-e170224416b2",
+                    "step": "bddea605-bad3-4722-7b9c-eb69b683638c",
+                    "matches": [],
+                    "scaleFactor": 1,
+                    "success": true,
+                    "screenshot": "7f1ec2fa-995e-2343-fffb-54eadac849c9-screenshot.jpg",
+                    "createdOn": 1684402813783
+                }
+            ],
+            "deviceData": {
+                "os": "iOS",
+                "serial": "7ADB2869-100B-4BF6-B3D0-259764639274",
+                "name": "iPhone 14",
+                "brand": "Apple",
+                "rotationVars": {
+                    "portrait": "ROTATION_0",
+                    "landscape": "ROTATION_90",
+                    "upsideDown": "ROTATION_180",
+                    "seascape": "ROTATION_270"
+                },
+                "isSimulator": true
+            },
+            "duration": 1734,
+            "appVersions": [
+                {
+                    "packageName": "io.appcircle.dashboard",
+                    "name": "1.2",
+                    "code": 2,
+                    "minSdk": 11
+                }
+            ],
+            "wasSuccessful": true
+        }
+    ],
+    "testRunExports": []
+}
