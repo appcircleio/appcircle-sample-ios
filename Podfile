@@ -8,6 +8,7 @@ target 'Appcircle' do
   # Pods for Appcircle
 
 	pod 'SwiftLint'
+	pod 'SDWebImage', '~> 5.0'
 
   target 'AppcircleTests' do
     inherit! :search_paths
