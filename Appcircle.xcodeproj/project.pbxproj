@@ -168,7 +168,6 @@
 				06FBBF9106392823B42C71F8 /* Pods-AppcircleTests.debug.xcconfig */,
 				17DFB419DA93C43B5D1830B8 /* Pods-AppcircleTests.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -579,6 +578,8 @@
 				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Calendar Usage Desc";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Location Usage";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -609,6 +610,8 @@
 				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Calendar Usage Desc";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Location Usage";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
