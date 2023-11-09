@@ -28,19 +28,13 @@ extension XCUIElement {
 class AppcircleUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     func testFizz() throws {
-        // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
         
@@ -52,7 +46,6 @@ class AppcircleUITests: XCTestCase {
     }
     
     func testBuzz() throws {
-        // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
         
@@ -65,7 +58,6 @@ class AppcircleUITests: XCTestCase {
     }
     
     func testOthers() throws {
-        // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
         
@@ -78,7 +70,6 @@ class AppcircleUITests: XCTestCase {
     }
     
     func testFail() throws {
-        // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
         
@@ -91,8 +82,6 @@ class AppcircleUITests: XCTestCase {
     }
 
     func testDataAttachment() throws {
-        let app = XCUIApplication()
-        app.launch()
         let text = "Appcircle"
         let attachment = XCTAttachment(data: Data(text.utf8))
         attachment.lifetime = .keepAlways
@@ -100,13 +89,10 @@ class AppcircleUITests: XCTestCase {
     }
     
     func testJsonAttachment() throws {
-        let app = XCUIApplication()
-        app.launch()
         let json = "{\"hello\":\"world\"}"
-        let attachment = XCTAttachment(data: Data(json.utf8),uniformTypeIdentifier: "public.json")
+        let attachment = XCTAttachment(data: Data(json.utf8), uniformTypeIdentifier: "public.json")
         attachment.lifetime = .keepAlways
         add(attachment)
     }
-
-
 }
+

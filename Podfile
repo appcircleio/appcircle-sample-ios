@@ -7,19 +7,7 @@ target 'Appcircle' do
 
   # Pods for Appcircle
 
-	pod 'SwiftLint'
-	pod 'SDWebImage', '~> 5.0'
-	pod 'Alamofire', '~> 4.8.2'
-    	pod 'Hero', '~> 1.4.0'
-    	pod 'SQLite.swift', '~> 0.12.0'
-    	pod 'ZXingObjC', '~> 3.6.4'
-    	pod 'SwiftyRSA', '1.6.0'
-    	pod 'CryptoSwift', '1.4.0'
-    	pod 'JitsiMeetSDK', '3.10.2'
-    	pod 'YPImagePicker', '~> 5.2.1'
-    	pod 'MaterialComponents'
-    	pod 'TOCropViewController', '2.6.0'
- 	pod 'SVGKit'
+
 
   target 'AppcircleTests' do
     inherit! :search_paths
