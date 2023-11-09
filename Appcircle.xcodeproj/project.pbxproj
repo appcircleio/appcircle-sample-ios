@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0D3CD92A4C67830F111811E2 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */; };
 		43719A5306E9262EE2CB803F /* Pods_AppcircleTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */; };
 		450FAD66277C4BBC00C3060D /* AppcircleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD65277C4BBC00C3060D /* AppcircleApp.swift */; };
 		450FAD68277C4BBC00C3060D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD67277C4BBC00C3060D /* ContentView.swift */; };
@@ -66,7 +65,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */,
-				0D3CD92A4C67830F111811E2 /* Pods_Appcircle.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
