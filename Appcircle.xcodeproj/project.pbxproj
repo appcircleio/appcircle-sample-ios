@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3CE407D66F59FB635C2D2802 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */; };
 		450FAD66277C4BBC00C3060D /* AppcircleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD65277C4BBC00C3060D /* AppcircleApp.swift */; };
 		450FAD68277C4BBC00C3060D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD67277C4BBC00C3060D /* ContentView.swift */; };
 		450FAD6A277C4BBF00C3060D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD69277C4BBF00C3060D /* Assets.xcassets */; };
@@ -15,6 +16,12 @@
 		450FAD81277C4BBF00C3060D /* AppcircleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD80277C4BBF00C3060D /* AppcircleUITests.swift */; };
 		450FAD83277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */; };
 		450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 450FAD91277C4D4D00C3060D /* FizzBuzzKit */; };
+		5C82D710667257791D11EBF5 /* Pods_Appcircle_AppcircleUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */; };
+		961EF1432B10AF6B0051C5E7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 961EF1422B10AF6B0051C5E7 /* GoogleService-Info.plist */; };
+		961EF1462B10B0540051C5E7 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 961EF1452B10B0540051C5E7 /* FirebaseAnalytics */; };
+		961EF1482B10B0540051C5E7 /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 961EF1472B10B0540051C5E7 /* FirebaseAnalyticsWithoutAdIdSupport */; };
+		961EF14A2B10B0540051C5E7 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 961EF1492B10B0540051C5E7 /* FirebaseCrashlytics */; };
+		D96884FDDB246178550625F8 /* Pods_AppcircleTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +58,7 @@
 		450FAD8F277C4C4600C3060D /* FizzBuzzKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FizzBuzzKit; sourceTree = "<group>"; };
 		518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.release.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.release.xcconfig"; sourceTree = "<group>"; };
 		8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		961EF1422B10AF6B0051C5E7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.release.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.release.xcconfig"; sourceTree = "<group>"; };
 		E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
@@ -63,6 +71,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */,
+				3CE407D66F59FB635C2D2802 /* Pods_Appcircle.framework in Frameworks */,
+				961EF14A2B10B0540051C5E7 /* FirebaseCrashlytics in Frameworks */,
+				961EF1462B10B0540051C5E7 /* FirebaseAnalytics in Frameworks */,
+				961EF1482B10B0540051C5E7 /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,6 +82,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D96884FDDB246178550625F8 /* Pods_AppcircleTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +90,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5C82D710667257791D11EBF5 /* Pods_Appcircle_AppcircleUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +126,7 @@
 				450FAD65277C4BBC00C3060D /* AppcircleApp.swift */,
 				450FAD67277C4BBC00C3060D /* ContentView.swift */,
 				450FAD69277C4BBF00C3060D /* Assets.xcassets */,
+				961EF1422B10AF6B0051C5E7 /* GoogleService-Info.plist */,
 				450FAD6B277C4BBF00C3060D /* Preview Content */,
 			);
 			path = Appcircle;
@@ -184,6 +199,9 @@
 			name = Appcircle;
 			packageProductDependencies = (
 				450FAD91277C4D4D00C3060D /* FizzBuzzKit */,
+				961EF1452B10B0540051C5E7 /* FirebaseAnalytics */,
+				961EF1472B10B0540051C5E7 /* FirebaseAnalyticsWithoutAdIdSupport */,
+				961EF1492B10B0540051C5E7 /* FirebaseCrashlytics */,
 			);
 			productName = Appcircle;
 			productReference = 450FAD62277C4BBC00C3060D /* Appcircle.app */;
@@ -259,6 +277,9 @@
 				Base,
 			);
 			mainGroup = 450FAD59277C4BBC00C3060D;
+			packageReferences = (
+				961EF1442B10B0540051C5E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = 450FAD63277C4BBC00C3060D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -277,6 +298,7 @@
 			files = (
 				450FAD6D277C4BBF00C3060D /* Preview Assets.xcassets in Resources */,
 				450FAD6A277C4BBF00C3060D /* Assets.xcassets in Resources */,
+				961EF1432B10AF6B0051C5E7 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -718,10 +740,36 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		961EF1442B10B0540051C5E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.18.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		450FAD91277C4D4D00C3060D /* FizzBuzzKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FizzBuzzKit;
+		};
+		961EF1452B10B0540051C5E7 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 961EF1442B10B0540051C5E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		961EF1472B10B0540051C5E7 /* FirebaseAnalyticsWithoutAdIdSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 961EF1442B10B0540051C5E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsWithoutAdIdSupport;
+		};
+		961EF1492B10B0540051C5E7 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 961EF1442B10B0540051C5E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
