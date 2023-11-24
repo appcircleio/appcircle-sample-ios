@@ -10,7 +10,7 @@ import XCTest
 class AppcircleUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
+         true
     }
 
     override func setUpWithError() throws {

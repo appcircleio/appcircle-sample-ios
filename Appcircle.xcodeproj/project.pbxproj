@@ -35,6 +35,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		06FBBF9106392823B42C71F8 /* Pods-AppcircleTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppcircleTests.debug.xcconfig"; path = "Target Support Files/Pods-AppcircleTests/Pods-AppcircleTests.debug.xcconfig"; sourceTree = "<group>"; };
+		1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Appcircle_AppcircleUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		17DFB419DA93C43B5D1830B8 /* Pods-AppcircleTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppcircleTests.release.xcconfig"; path = "Target Support Files/Pods-AppcircleTests/Pods-AppcircleTests.release.xcconfig"; sourceTree = "<group>"; };
 		450FAD62277C4BBC00C3060D /* Appcircle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Appcircle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		450FAD65277C4BBC00C3060D /* AppcircleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcircleApp.swift; sourceTree = "<group>"; };
 		450FAD67277C4BBC00C3060D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -46,6 +49,12 @@
 		450FAD80277C4BBF00C3060D /* AppcircleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcircleUITests.swift; sourceTree = "<group>"; };
 		450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcircleUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		450FAD8F277C4C4600C3060D /* FizzBuzzKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FizzBuzzKit; sourceTree = "<group>"; };
+		518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.release.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.release.xcconfig"; sourceTree = "<group>"; };
+		8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.release.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.release.xcconfig"; sourceTree = "<group>"; };
+		E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
+		FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,6 +92,7 @@
 				450FAD7F277C4BBF00C3060D /* AppcircleUITests */,
 				450FAD63277C4BBC00C3060D /* Products */,
 				450FAD90277C4D4D00C3060D /* Frameworks */,
+				B1F44333DE4BA7CE83A6EEB4 /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -135,8 +145,24 @@
 		450FAD90277C4D4D00C3060D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */,
+				1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */,
+				9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		B1F44333DE4BA7CE83A6EEB4 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */,
+				C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */,
+				8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */,
+				518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */,
+				06FBBF9106392823B42C71F8 /* Pods-AppcircleTests.debug.xcconfig */,
+				17DFB419DA93C43B5D1830B8 /* Pods-AppcircleTests.release.xcconfig */,
+			);
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -146,6 +172,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 450FAD86277C4BBF00C3060D /* Build configuration list for PBXNativeTarget "Appcircle" */;
 			buildPhases = (
+				25389DD81A4BB723DEDD9515 /* [CP] Check Pods Manifest.lock */,
 				450FAD5E277C4BBC00C3060D /* Sources */,
 				450FAD5F277C4BBC00C3060D /* Frameworks */,
 				450FAD60277C4BBC00C3060D /* Resources */,
@@ -166,6 +193,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 450FAD89277C4BBF00C3060D /* Build configuration list for PBXNativeTarget "AppcircleTests" */;
 			buildPhases = (
+				3C9C75B2B7A883E31F7EA73E /* [CP] Check Pods Manifest.lock */,
 				450FAD6E277C4BBF00C3060D /* Sources */,
 				450FAD6F277C4BBF00C3060D /* Frameworks */,
 				450FAD70277C4BBF00C3060D /* Resources */,
@@ -184,6 +212,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 450FAD8C277C4BBF00C3060D /* Build configuration list for PBXNativeTarget "AppcircleUITests" */;
 			buildPhases = (
+				1B4205A59C61E03FB5145E0A /* [CP] Check Pods Manifest.lock */,
 				450FAD78277C4BBF00C3060D /* Sources */,
 				450FAD79277C4BBF00C3060D /* Frameworks */,
 				450FAD7A277C4BBF00C3060D /* Resources */,
@@ -266,6 +295,75 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1B4205A59C61E03FB5145E0A /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Appcircle-AppcircleUITests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		25389DD81A4BB723DEDD9515 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Appcircle-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3C9C75B2B7A883E31F7EA73E /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-AppcircleTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		450FAD5E277C4BBC00C3060D /* Sources */ = {
@@ -361,7 +459,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -416,9 +514,10 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -428,13 +527,15 @@
 		};
 		450FAD87277C4BBF00C3060D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Appcircle/Preview Content\"";
-				DEVELOPMENT_TEAM = 8U2Z24R99J;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Health Permission";
@@ -444,6 +545,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -451,6 +553,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.dashboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -459,13 +562,15 @@
 		};
 		450FAD88277C4BBF00C3060D /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Appcircle/Preview Content\"";
-				DEVELOPMENT_TEAM = 8U2Z24R99J;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Health Permission";
@@ -475,6 +580,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -482,6 +588,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.dashboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -490,16 +597,19 @@
 		};
 		450FAD8A277C4BBF00C3060D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 06FBBF9106392823B42C71F8 /* Pods-AppcircleTests.debug.xcconfig */;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.AppcircleTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -509,16 +619,19 @@
 		};
 		450FAD8B277C4BBF00C3060D /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 17DFB419DA93C43B5D1830B8 /* Pods-AppcircleTests.release.xcconfig */;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.AppcircleTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -528,11 +641,13 @@
 		};
 		450FAD8D277C4BBF00C3060D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.AppcircleUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -545,11 +660,13 @@
 		};
 		450FAD8E277C4BBF00C3060D /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.AppcircleUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
