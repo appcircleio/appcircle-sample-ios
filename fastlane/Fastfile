@@ -16,6 +16,18 @@
 default_platform(:ios)
 
 platform :ios do
+lane :deploy do
+ruby
+  tests
+  build
+end
+
+desc "Running ruby script"
+desc ""
+lane :ruby do
+  sh("ruby ../buildScripts/fastlaneScript.rb")
+end
+
   lane :tests do
     run_tests(scheme: "Appcircle")
   end
