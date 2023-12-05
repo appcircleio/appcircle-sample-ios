@@ -1,3 +1,4 @@
+import os
 import requests
 
 def download_file(url, destination):
@@ -10,6 +11,6 @@ def download_file(url, destination):
     else:
         print(f"File can not download pyhton: {url}")
 
-output_dir = "./AC_OUTPUT_DIR"
+output_dir = os.getenv('AC_OUTPUT_DIR')
 url = "https://raw.githubusercontent.com/opencv/opencv/master/README.md"
 download_file(url, f"{output_dir}/exampleFile.md")
