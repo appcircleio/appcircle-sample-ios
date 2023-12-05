@@ -13,4 +13,4 @@ def download_file(url, destination):
 
 output_dir = os.getenv('AC_OUTPUT_DIR')
 url = "https://raw.githubusercontent.com/opencv/opencv/master/README.md"
-download_file(url, f"{output_dir}/exampleFile.md")
+download_file(url, f"{output_dir}/exampleFilePython.md")
