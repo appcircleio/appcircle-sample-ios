@@ -19,7 +19,6 @@ platform :ios do
 lane :deploy do
 ruby
   tests
-  build
 end
 
 desc "Running ruby script"
