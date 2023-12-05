@@ -18,13 +18,18 @@ default_platform(:ios)
 platform :ios do
 lane :deploy do
 ruby
-  tests
+tests
+python
 end
 
 desc "Running ruby script"
 desc ""
 lane :ruby do
   sh("ruby ../buildScripts/fastlaneScript.rb")
+end
+
+lane :python do
+  sh("python3 ../buildScripts/fastlaneScript.py")
 end
 
   lane :tests do
