@@ -15,6 +15,6 @@ target 'Appcircle' do
   end
 
   target 'AppcircleUITests' do
-    # Pods for testing trigger test
+    # Pods for testing trigger test test
   end
 end
