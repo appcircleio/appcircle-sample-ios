@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "450FAD61277C4BBC00C3060D"
-               BuildableName = "Appcircle.app"
-               BlueprintName = "Appcircle"
+               BuildableName = "Appcircle-Dev.app"
+               BlueprintName = "Appcircle-Dev"
                ReferencedContainer = "container:Appcircle.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -67,8 +67,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "450FAD61277C4BBC00C3060D"
-            BuildableName = "Appcircle.app"
-            BlueprintName = "Appcircle"
+            BuildableName = "Appcircle-Dev.app"
+            BlueprintName = "Appcircle-Dev"
             ReferencedContainer = "container:Appcircle.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -84,8 +84,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "450FAD61277C4BBC00C3060D"
-            BuildableName = "Appcircle.app"
-            BlueprintName = "Appcircle"
+            BuildableName = "Appcircle-Dev.app"
+            BlueprintName = "Appcircle-Dev"
             ReferencedContainer = "container:Appcircle.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
