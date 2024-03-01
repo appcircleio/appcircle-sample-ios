@@ -25,6 +25,7 @@
 		96A35D782B91D9FB0061EFEA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD69277C4BBF00C3060D /* Assets.xcassets */; };
 		96A35D832B91DC150061EFEA /* Pods_Appcircle_Dev.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */; };
 		96A35D842B91DC150061EFEA /* Pods_Appcircle_Dev.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		96A35DBD2B91DF260061EFEA /* Appcircle-Dev.plist in Resources */ = {isa = PBXBuildFile; fileRef = 96A35DBC2B91DF260061EFEA /* Appcircle-Dev.plist */; };
 		F35D610EF7C29D886DB00B29 /* Pods_AppcircleTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */; };
 /* End PBXBuildFile section */
 
@@ -81,6 +82,7 @@
 		90A0A2D2CBCDA7CE27832B55 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
 		96A35D7C2B91D9FB0061EFEA /* Appcircle-Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Appcircle-Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle_Dev.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		96A35DBC2B91DF260061EFEA /* Appcircle-Dev.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Appcircle-Dev.plist"; sourceTree = "<group>"; };
 		96A6ABA92B47DBB700FA8783 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F059E21503A84B4CADCDC9CE /* Pods_Appcircle_Dev.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Appcircle_Dev.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -130,6 +132,7 @@
 		450FAD59277C4BBC00C3060D = {
 			isa = PBXGroup;
 			children = (
+				96A35DBC2B91DF260061EFEA /* Appcircle-Dev.plist */,
 				450FAD8F277C4C4600C3060D /* FizzBuzzKit */,
 				450FAD64277C4BBC00C3060D /* Appcircle */,
 				450FAD75277C4BBF00C3060D /* AppcircleTests */,
@@ -372,6 +375,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				96A35D772B91D9FB0061EFEA /* Preview Assets.xcassets in Resources */,
+				96A35DBD2B91DF260061EFEA /* Appcircle-Dev.plist in Resources */,
 				96A35D782B91D9FB0061EFEA /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -801,7 +805,7 @@
 				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Appcircle copy-Info.plist";
+				INFOPLIST_FILE = "Appcircle-Dev";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -835,7 +839,7 @@
 				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Appcircle copy-Info.plist";
+				INFOPLIST_FILE = "Appcircle-Dev";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
