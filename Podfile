@@ -7,8 +7,6 @@ target 'Appcircle' do
 
   # Pods for Appcircle
 
-
-
   target 'AppcircleTests' do
     inherit! :search_paths
     # Pods for testing
@@ -17,4 +15,13 @@ target 'Appcircle' do
   target 'AppcircleUITests' do
     # Pods for testing
   end
+
+end
+
+target 'Appcircle-Dev' do
+  # Comment the next line if you don't want to use dynamic frameworks
+  use_frameworks!
+
+  # Pods for Appcircle-Dev
+
 end

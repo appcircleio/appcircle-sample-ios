@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3C1728B919B52B6C26BC4D5A /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */; };
 		450FAD66277C4BBC00C3060D /* AppcircleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD65277C4BBC00C3060D /* AppcircleApp.swift */; };
 		450FAD68277C4BBC00C3060D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD67277C4BBC00C3060D /* ContentView.swift */; };
 		450FAD6A277C4BBF00C3060D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD69277C4BBF00C3060D /* Assets.xcassets */; };
@@ -15,11 +16,16 @@
 		450FAD81277C4BBF00C3060D /* AppcircleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD80277C4BBF00C3060D /* AppcircleUITests.swift */; };
 		450FAD83277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */; };
 		450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 450FAD91277C4D4D00C3060D /* FizzBuzzKit */; };
+		5A9ABA82D99779D36E5EBB32 /* Pods_Appcircle_AppcircleUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */; };
+		617A051D76F9853C241B146A /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		96A35D722B91D9FB0061EFEA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD67277C4BBC00C3060D /* ContentView.swift */; };
 		96A35D732B91D9FB0061EFEA /* AppcircleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD65277C4BBC00C3060D /* AppcircleApp.swift */; };
 		96A35D752B91D9FB0061EFEA /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96A35D6F2B91D9FB0061EFEA /* FizzBuzzKit */; };
 		96A35D772B91D9FB0061EFEA /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD6C277C4BBF00C3060D /* Preview Assets.xcassets */; };
 		96A35D782B91D9FB0061EFEA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD69277C4BBF00C3060D /* Assets.xcassets */; };
+		96A35D832B91DC150061EFEA /* Pods_Appcircle_Dev.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */; };
+		96A35D842B91DC150061EFEA /* Pods_Appcircle_Dev.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F35D610EF7C29D886DB00B29 /* Pods_AppcircleTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,6 +45,20 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		96A35D852B91DC160061EFEA /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				96A35D842B91DC150061EFEA /* Pods_Appcircle_Dev.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		06FBBF9106392823B42C71F8 /* Pods-AppcircleTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppcircleTests.debug.xcconfig"; path = "Target Support Files/Pods-AppcircleTests/Pods-AppcircleTests.debug.xcconfig"; sourceTree = "<group>"; };
 		1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Appcircle_AppcircleUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -55,12 +75,16 @@
 		450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcircleUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		450FAD8F277C4C4600C3060D /* FizzBuzzKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FizzBuzzKit; sourceTree = "<group>"; };
 		518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.release.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.release.xcconfig"; sourceTree = "<group>"; };
+		742BB4683D296AF5FAD51548 /* Pods-Appcircle-Dev.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-Dev.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle-Dev/Pods-Appcircle-Dev.debug.xcconfig"; sourceTree = "<group>"; };
+		7DC7D990D491FA21E8F2F3D0 /* Pods-Appcircle-Dev.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-Dev.release.xcconfig"; path = "Target Support Files/Pods-Appcircle-Dev/Pods-Appcircle-Dev.release.xcconfig"; sourceTree = "<group>"; };
 		8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		90A0A2D2CBCDA7CE27832B55 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
 		96A35D7C2B91D9FB0061EFEA /* Appcircle-Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Appcircle-Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle_Dev.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		96A6ABA92B47DBB700FA8783 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.release.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.release.xcconfig"; sourceTree = "<group>"; };
-		E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
+		F059E21503A84B4CADCDC9CE /* Pods_Appcircle_Dev.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Appcircle_Dev.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F82FD52CBE2F4CAD54DEBAEE /* Pods-Appcircle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.release.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.release.xcconfig"; sourceTree = "<group>"; };
 		FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -70,6 +94,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */,
+				3C1728B919B52B6C26BC4D5A /* Pods_Appcircle.framework in Frameworks */,
+				617A051D76F9853C241B146A /* (null) in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +103,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F35D610EF7C29D886DB00B29 /* Pods_AppcircleTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +111,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A9ABA82D99779D36E5EBB32 /* Pods_Appcircle_AppcircleUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +119,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				96A35D832B91DC150061EFEA /* Pods_Appcircle_Dev.framework in Frameworks */,
 				96A35D752B91D9FB0061EFEA /* FizzBuzzKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -162,9 +191,11 @@
 		450FAD90277C4D4D00C3060D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				96A35D822B91DC150061EFEA /* Pods_Appcircle_Dev.framework */,
 				FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */,
 				1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */,
 				9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */,
+				F059E21503A84B4CADCDC9CE /* Pods_Appcircle_Dev.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -172,12 +203,14 @@
 		B1F44333DE4BA7CE83A6EEB4 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */,
-				C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */,
 				8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */,
 				518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */,
 				06FBBF9106392823B42C71F8 /* Pods-AppcircleTests.debug.xcconfig */,
 				17DFB419DA93C43B5D1830B8 /* Pods-AppcircleTests.release.xcconfig */,
+				90A0A2D2CBCDA7CE27832B55 /* Pods-Appcircle.debug.xcconfig */,
+				F82FD52CBE2F4CAD54DEBAEE /* Pods-Appcircle.release.xcconfig */,
+				742BB4683D296AF5FAD51548 /* Pods-Appcircle-Dev.debug.xcconfig */,
+				7DC7D990D491FA21E8F2F3D0 /* Pods-Appcircle-Dev.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -248,10 +281,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 96A35D792B91D9FB0061EFEA /* Build configuration list for PBXNativeTarget "Appcircle-Dev" */;
 			buildPhases = (
-				96A35D702B91D9FB0061EFEA /* [CP] Check Pods Manifest.lock */,
+				995309F36DB11255851FDB42 /* [CP] Check Pods Manifest.lock */,
 				96A35D712B91D9FB0061EFEA /* Sources */,
 				96A35D742B91D9FB0061EFEA /* Frameworks */,
 				96A35D762B91D9FB0061EFEA /* Resources */,
+				96A35D852B91DC160061EFEA /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -411,7 +445,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		96A35D702B91D9FB0061EFEA /* [CP] Check Pods Manifest.lock */ = {
+		995309F36DB11255851FDB42 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -426,7 +460,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Appcircle-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-Appcircle-Dev-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -606,7 +640,7 @@
 		};
 		450FAD87277C4BBF00C3060D /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */;
+			baseConfigurationReference = 90A0A2D2CBCDA7CE27832B55 /* Pods-Appcircle.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -640,7 +674,7 @@
 		};
 		450FAD88277C4BBF00C3060D /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */;
+			baseConfigurationReference = F82FD52CBE2F4CAD54DEBAEE /* Pods-Appcircle.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -756,7 +790,7 @@
 		};
 		96A35D7A2B91D9FB0061EFEA /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */;
+			baseConfigurationReference = 742BB4683D296AF5FAD51548 /* Pods-Appcircle-Dev.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon.dev;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -790,7 +824,7 @@
 		};
 		96A35D7B2B91D9FB0061EFEA /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */;
+			baseConfigurationReference = 7DC7D990D491FA21E8F2F3D0 /* Pods-Appcircle-Dev.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon.dev;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

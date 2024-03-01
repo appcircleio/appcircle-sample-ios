@@ -1,0 +1,6 @@
+framework module Pods_Appcircle_Dev {
+  umbrella header "Pods-Appcircle-Dev-umbrella.h"
+
+  export *
+  module * { export * }
+}
