@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2CD49E714305D62D00BFA459 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */; };
+		2F5FD2F07158FB3A64646BED /* Pods_AppcircleTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */; };
 		450FAD66277C4BBC00C3060D /* AppcircleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD65277C4BBC00C3060D /* AppcircleApp.swift */; };
 		450FAD68277C4BBC00C3060D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD67277C4BBC00C3060D /* ContentView.swift */; };
 		450FAD6A277C4BBF00C3060D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD69277C4BBF00C3060D /* Assets.xcassets */; };
@@ -15,6 +17,7 @@
 		450FAD81277C4BBF00C3060D /* AppcircleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD80277C4BBF00C3060D /* AppcircleUITests.swift */; };
 		450FAD83277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */; };
 		450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 450FAD91277C4D4D00C3060D /* FizzBuzzKit */; };
+		8E4151C9DA2C59FCA0487C89 /* Pods_Appcircle_AppcircleUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +66,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */,
+				2CD49E714305D62D00BFA459 /* Pods_Appcircle.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,6 +74,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2F5FD2F07158FB3A64646BED /* Pods_AppcircleTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +82,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8E4151C9DA2C59FCA0487C89 /* Pods_Appcircle_AppcircleUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
