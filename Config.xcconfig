@@ -10,3 +10,4 @@
 
 
 BUNDLE_IDENTIFIER = io.appcircle.dashboard
+BUNDLE_IDENTIFIER_TEST = io.appcircle.AppcircleTests
