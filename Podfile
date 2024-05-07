@@ -6,8 +6,7 @@ target 'Appcircle' do
   use_frameworks!
 
   # Pods for Appcircle
-	      pod 'AFNetworking'
-  	    pod 'SDWebImage'
+	     
 
 
   target 'AppcircleTests' do
