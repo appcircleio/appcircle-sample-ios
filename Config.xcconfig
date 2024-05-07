@@ -1,11 +1,12 @@
 //
-//  BundleConfig.xcconfig
+//  Config.xcconfig
 //  Appcircle
 //
-//  Created by Burak Öztopuz on 6.05.2024.
+//  Created by Burak Öztopuz on 7.05.2024.
 //
 
 // Configuration settings file format documentation can be found at:
 // https://help.apple.com/xcode/#/dev745c5c974
 
-BUNDLE_IDENTIFIER = io.appcircle.dashboard
+
+BUNDLE_IDENTIFIER = "io.appcircle.dashboard"
