@@ -9,4 +9,4 @@
 // https://help.apple.com/xcode/#/dev745c5c974
 
 
-BUNDLE_IDENTIFIER = "io.appcircle.dashboard"
+BUNDLE_IDENTIFIER = io.appcircle.dashboard
