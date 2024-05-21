@@ -19,9 +19,6 @@
 		960F3AE82BFD09690057F9B9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960F3AE72BFD09690057F9B9 /* ContentView.swift */; };
 		960F3AEA2BFD096A0057F9B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AE92BFD096A0057F9B9 /* Assets.xcassets */; };
 		960F3AED2BFD096A0057F9B9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AEC2BFD096A0057F9B9 /* Preview Assets.xcassets */; };
-		960F3AF72BFD0CD10057F9B9 /* MonoRepoInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AF62BFD0CD10057F9B9 /* MonoRepoInfo.plist */; };
-		960F3AF92BFD11FA0057F9B9 /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 960F3AF82BFD11FA0057F9B9 /* FizzBuzzKit */; };
-		960F3AFB2BFD12050057F9B9 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 960F3AFA2BFD12050057F9B9 /* Pods_Appcircle.framework */; };
 		965115AB2BB706D40094E519 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; };
 		965115AC2BB706D40094E519 /* Pods_Appcircle.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -117,8 +114,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				960F3AFB2BFD12050057F9B9 /* Pods_Appcircle.framework in Frameworks */,
-				960F3AF92BFD11FA0057F9B9 /* FizzBuzzKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,7 +304,6 @@
 			);
 			name = AppcircleMonoRepo;
 			packageProductDependencies = (
-				960F3AF82BFD11FA0057F9B9 /* FizzBuzzKit */,
 			);
 			productName = AppcircleMonoRepo;
 			productReference = 960F3AE32BFD09690057F9B9 /* AppcircleMonoRepo.app */;
@@ -392,7 +386,6 @@
 			files = (
 				960F3AED2BFD096A0057F9B9 /* Preview Assets.xcassets in Resources */,
 				960F3AEA2BFD096A0057F9B9 /* Assets.xcassets in Resources */,
-				960F3AF72BFD0CD10057F9B9 /* MonoRepoInfo.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -817,6 +810,9 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.appcircle.AppcircleMonoRepo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -855,6 +851,9 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.appcircle.AppcircleMonoRepo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -913,10 +912,6 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		450FAD91277C4D4D00C3060D /* FizzBuzzKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = FizzBuzzKit;
-		};
-		960F3AF82BFD11FA0057F9B9 /* FizzBuzzKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FizzBuzzKit;
 		};
