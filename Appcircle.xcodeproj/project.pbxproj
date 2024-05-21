@@ -20,6 +20,8 @@
 		960F3AEA2BFD096A0057F9B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AE92BFD096A0057F9B9 /* Assets.xcassets */; };
 		960F3AED2BFD096A0057F9B9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AEC2BFD096A0057F9B9 /* Preview Assets.xcassets */; };
 		960F3AF72BFD0CD10057F9B9 /* MonoRepoInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AF62BFD0CD10057F9B9 /* MonoRepoInfo.plist */; };
+		960F3AF92BFD11FA0057F9B9 /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 960F3AF82BFD11FA0057F9B9 /* FizzBuzzKit */; };
+		960F3AFB2BFD12050057F9B9 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 960F3AFA2BFD12050057F9B9 /* Pods_Appcircle.framework */; };
 		965115AB2BB706D40094E519 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; };
 		965115AC2BB706D40094E519 /* Pods_Appcircle.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -78,6 +80,7 @@
 		960F3AE92BFD096A0057F9B9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		960F3AEC2BFD096A0057F9B9 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		960F3AF62BFD0CD10057F9B9 /* MonoRepoInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MonoRepoInfo.plist; sourceTree = "<group>"; };
+		960F3AFA2BFD12050057F9B9 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		965115AA2BB706D40094E519 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		96A6ABA92B47DBB700FA8783 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -114,6 +117,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				960F3AFB2BFD12050057F9B9 /* Pods_Appcircle.framework in Frameworks */,
+				960F3AF92BFD11FA0057F9B9 /* FizzBuzzKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -185,6 +190,7 @@
 		450FAD90277C4D4D00C3060D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				960F3AFA2BFD12050057F9B9 /* Pods_Appcircle.framework */,
 				965115AA2BB706D40094E519 /* Pods_Appcircle.framework */,
 				FCFEB78EDB1F77EF190FD514 /* Pods_Appcircle.framework */,
 				1347EF61C755B4D254896A48 /* Pods_Appcircle_AppcircleUITests.framework */,
@@ -302,6 +308,9 @@
 			dependencies = (
 			);
 			name = AppcircleMonoRepo;
+			packageProductDependencies = (
+				960F3AF82BFD11FA0057F9B9 /* FizzBuzzKit */,
+			);
 			productName = AppcircleMonoRepo;
 			productReference = 960F3AE32BFD09690057F9B9 /* AppcircleMonoRepo.app */;
 			productType = "com.apple.product-type.application";
@@ -904,6 +913,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		450FAD91277C4D4D00C3060D /* FizzBuzzKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FizzBuzzKit;
+		};
+		960F3AF82BFD11FA0057F9B9 /* FizzBuzzKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FizzBuzzKit;
 		};
