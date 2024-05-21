@@ -20,6 +20,20 @@
                ReferencedContainer = "container:Appcircle.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "960F3AE22BFD09690057F9B9"
+               BuildableName = "AppcircleMonoRepo.app"
+               BlueprintName = "AppcircleMonoRepo"
+               ReferencedContainer = "container:Appcircle.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
