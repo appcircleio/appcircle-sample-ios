@@ -1,25 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1330"
-   version = "1.3">
+   LastUpgradeVersion = "1520"
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
       <BuildActionEntries>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "450FAD61277C4BBC00C3060D"
-               BuildableName = "Appcircle.app"
-               BlueprintName = "Appcircle"
-               ReferencedContainer = "container:Appcircle.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
             buildForRunning = "YES"
@@ -41,30 +27,7 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      systemAttachmentLifetime = "keepAlways"
-      codeCoverageEnabled = "YES">
-      <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "450FAD71277C4BBF00C3060D"
-               BuildableName = "AppcircleTests.xctest"
-               BlueprintName = "AppcircleTests"
-               ReferencedContainer = "container:Appcircle.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "450FAD7B277C4BBF00C3060D"
-               BuildableName = "AppcircleUITests.xctest"
-               BlueprintName = "AppcircleUITests"
-               ReferencedContainer = "container:Appcircle.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-      </Testables>
+      shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -80,9 +43,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "450FAD61277C4BBC00C3060D"
-            BuildableName = "Appcircle.app"
-            BlueprintName = "Appcircle"
+            BlueprintIdentifier = "96DBFBE72C084A55002CF548"
+            BuildableName = "AppcircleMonoRepo.app"
+            BlueprintName = "AppcircleMonoRepo"
             ReferencedContainer = "container:Appcircle.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -97,9 +60,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "450FAD61277C4BBC00C3060D"
-            BuildableName = "Appcircle.app"
-            BlueprintName = "Appcircle"
+            BlueprintIdentifier = "96DBFBE72C084A55002CF548"
+            BuildableName = "AppcircleMonoRepo.app"
+            BlueprintName = "AppcircleMonoRepo"
             ReferencedContainer = "container:Appcircle.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

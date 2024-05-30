@@ -15,12 +15,16 @@
 		450FAD81277C4BBF00C3060D /* AppcircleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD80277C4BBF00C3060D /* AppcircleUITests.swift */; };
 		450FAD83277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */; };
 		450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 450FAD91277C4D4D00C3060D /* FizzBuzzKit */; };
-		960F3AE62BFD09690057F9B9 /* AppcircleMonoRepoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960F3AE52BFD09690057F9B9 /* AppcircleMonoRepoApp.swift */; };
-		960F3AE82BFD09690057F9B9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960F3AE72BFD09690057F9B9 /* ContentView.swift */; };
-		960F3AEA2BFD096A0057F9B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AE92BFD096A0057F9B9 /* Assets.xcassets */; };
-		960F3AED2BFD096A0057F9B9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960F3AEC2BFD096A0057F9B9 /* Preview Assets.xcassets */; };
 		965115AB2BB706D40094E519 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; };
 		965115AC2BB706D40094E519 /* Pods_Appcircle.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		96DBFBEB2C084A55002CF548 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD67277C4BBC00C3060D /* ContentView.swift */; };
+		96DBFBEC2C084A55002CF548 /* AppcircleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD65277C4BBC00C3060D /* AppcircleApp.swift */; };
+		96DBFBEE2C084A55002CF548 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; };
+		96DBFBEF2C084A55002CF548 /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 96DBFBE82C084A55002CF548 /* FizzBuzzKit */; };
+		96DBFBF12C084A55002CF548 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD6C277C4BBF00C3060D /* Preview Assets.xcassets */; };
+		96DBFBF22C084A55002CF548 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 450FAD69277C4BBF00C3060D /* Assets.xcassets */; };
+		96DBFBF42C084A55002CF548 /* Pods_Appcircle.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		96DBFBFA2C084A83002CF548 /* MonoRepo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 96DBFBF92C084A55002CF548 /* MonoRepo.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +56,17 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96DBFBF32C084A55002CF548 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				96DBFBF42C084A55002CF548 /* Pods_Appcircle.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -71,15 +86,11 @@
 		450FAD8F277C4C4600C3060D /* FizzBuzzKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = FizzBuzzKit; sourceTree = "<group>"; };
 		518CE9777E6CE0571A6DC6D9 /* Pods-Appcircle-AppcircleUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.release.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.release.xcconfig"; sourceTree = "<group>"; };
 		8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.debug.xcconfig"; sourceTree = "<group>"; };
-		960F3AE32BFD09690057F9B9 /* AppcircleMonoRepo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AppcircleMonoRepo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		960F3AE52BFD09690057F9B9 /* AppcircleMonoRepoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcircleMonoRepoApp.swift; sourceTree = "<group>"; };
-		960F3AE72BFD09690057F9B9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		960F3AE92BFD096A0057F9B9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		960F3AEC2BFD096A0057F9B9 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		960F3AF62BFD0CD10057F9B9 /* MonoRepoInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MonoRepoInfo.plist; sourceTree = "<group>"; };
 		960F3AFA2BFD12050057F9B9 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		965115AA2BB706D40094E519 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		96A6ABA92B47DBB700FA8783 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		96DBFBF82C084A55002CF548 /* AppcircleMonoRepo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AppcircleMonoRepo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		96DBFBF92C084A55002CF548 /* MonoRepo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = MonoRepo.plist; path = "/Users/burakoztopuz/Desktop/Appcircle/dev/appcircle-sample-ios/MonoRepo.plist"; sourceTree = "<absolute>"; };
 		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.release.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.release.xcconfig"; sourceTree = "<group>"; };
 		E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
@@ -110,10 +121,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		960F3AE02BFD09690057F9B9 /* Frameworks */ = {
+		96DBFBED2C084A55002CF548 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				96DBFBEE2C084A55002CF548 /* Pods_Appcircle.framework in Frameworks */,
+				96DBFBEF2C084A55002CF548 /* FizzBuzzKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,10 +140,10 @@
 				450FAD64277C4BBC00C3060D /* Appcircle */,
 				450FAD75277C4BBF00C3060D /* AppcircleTests */,
 				450FAD7F277C4BBF00C3060D /* AppcircleUITests */,
-				960F3AE42BFD09690057F9B9 /* AppcircleMonoRepo */,
 				450FAD63277C4BBC00C3060D /* Products */,
 				450FAD90277C4D4D00C3060D /* Frameworks */,
 				B1F44333DE4BA7CE83A6EEB4 /* Pods */,
+				96DBFBF92C084A55002CF548 /* MonoRepo.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -140,7 +153,7 @@
 				450FAD62277C4BBC00C3060D /* Appcircle.app */,
 				450FAD72277C4BBF00C3060D /* AppcircleTests.xctest */,
 				450FAD7C277C4BBF00C3060D /* AppcircleUITests.xctest */,
-				960F3AE32BFD09690057F9B9 /* AppcircleMonoRepo.app */,
+				96DBFBF82C084A55002CF548 /* AppcircleMonoRepo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -192,26 +205,6 @@
 				9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		960F3AE42BFD09690057F9B9 /* AppcircleMonoRepo */ = {
-			isa = PBXGroup;
-			children = (
-				960F3AE52BFD09690057F9B9 /* AppcircleMonoRepoApp.swift */,
-				960F3AE72BFD09690057F9B9 /* ContentView.swift */,
-				960F3AE92BFD096A0057F9B9 /* Assets.xcassets */,
-				960F3AEB2BFD096A0057F9B9 /* Preview Content */,
-				960F3AF62BFD0CD10057F9B9 /* MonoRepoInfo.plist */,
-			);
-			path = AppcircleMonoRepo;
-			sourceTree = "<group>";
-		};
-		960F3AEB2BFD096A0057F9B9 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				960F3AEC2BFD096A0057F9B9 /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 		B1F44333DE4BA7CE83A6EEB4 /* Pods */ = {
@@ -290,13 +283,15 @@
 			productReference = 450FAD7C277C4BBF00C3060D /* AppcircleUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		960F3AE22BFD09690057F9B9 /* AppcircleMonoRepo */ = {
+		96DBFBE72C084A55002CF548 /* AppcircleMonoRepo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 960F3AF02BFD096A0057F9B9 /* Build configuration list for PBXNativeTarget "AppcircleMonoRepo" */;
+			buildConfigurationList = 96DBFBF52C084A55002CF548 /* Build configuration list for PBXNativeTarget "AppcircleMonoRepo" */;
 			buildPhases = (
-				960F3ADF2BFD09690057F9B9 /* Sources */,
-				960F3AE02BFD09690057F9B9 /* Frameworks */,
-				960F3AE12BFD09690057F9B9 /* Resources */,
+				96DBFBE92C084A55002CF548 /* [CP] Check Pods Manifest.lock */,
+				96DBFBEA2C084A55002CF548 /* Sources */,
+				96DBFBED2C084A55002CF548 /* Frameworks */,
+				96DBFBF02C084A55002CF548 /* Resources */,
+				96DBFBF32C084A55002CF548 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -304,9 +299,10 @@
 			);
 			name = AppcircleMonoRepo;
 			packageProductDependencies = (
+				96DBFBE82C084A55002CF548 /* FizzBuzzKit */,
 			);
-			productName = AppcircleMonoRepo;
-			productReference = 960F3AE32BFD09690057F9B9 /* AppcircleMonoRepo.app */;
+			productName = Appcircle;
+			productReference = 96DBFBF82C084A55002CF548 /* AppcircleMonoRepo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -330,9 +326,6 @@
 						CreatedOnToolsVersion = 13.2.1;
 						TestTargetID = 450FAD61277C4BBC00C3060D;
 					};
-					960F3AE22BFD09690057F9B9 = {
-						CreatedOnToolsVersion = 15.2;
-					};
 				};
 			};
 			buildConfigurationList = 450FAD5D277C4BBC00C3060D /* Build configuration list for PBXProject "Appcircle" */;
@@ -349,9 +342,9 @@
 			projectRoot = "";
 			targets = (
 				450FAD61277C4BBC00C3060D /* Appcircle */,
-				960F3AE22BFD09690057F9B9 /* AppcircleMonoRepo */,
 				450FAD71277C4BBF00C3060D /* AppcircleTests */,
 				450FAD7B277C4BBF00C3060D /* AppcircleUITests */,
+				96DBFBE72C084A55002CF548 /* AppcircleMonoRepo */,
 			);
 		};
 /* End PBXProject section */
@@ -380,12 +373,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		960F3AE12BFD09690057F9B9 /* Resources */ = {
+		96DBFBF02C084A55002CF548 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				960F3AED2BFD096A0057F9B9 /* Preview Assets.xcassets in Resources */,
-				960F3AEA2BFD096A0057F9B9 /* Assets.xcassets in Resources */,
+				96DBFBF12C084A55002CF548 /* Preview Assets.xcassets in Resources */,
+				96DBFBFA2C084A83002CF548 /* MonoRepo.plist in Resources */,
+				96DBFBF22C084A55002CF548 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -458,6 +452,28 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		96DBFBE92C084A55002CF548 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Appcircle-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -487,12 +503,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		960F3ADF2BFD09690057F9B9 /* Sources */ = {
+		96DBFBEA2C084A55002CF548 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				960F3AE82BFD09690057F9B9 /* ContentView.swift in Sources */,
-				960F3AE62BFD09690057F9B9 /* AppcircleMonoRepoApp.swift in Sources */,
+				96DBFBEB2C084A55002CF548 /* ContentView.swift in Sources */,
+				96DBFBEC2C084A55002CF548 /* AppcircleApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -779,81 +795,68 @@
 			};
 			name = Release;
 		};
-		960F3AEE2BFD096A0057F9B9 /* Debug */ = {
+		96DBFBF62C084A55002CF548 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"AppcircleMonoRepo/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Appcircle/Preview Content\"";
 				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = AppcircleMonoRepo/MonoRepoInfo.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = AppcircleMono;
+				INFOPLIST_FILE = MonoRepo.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.appcircle.AppcircleMonoRepo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		960F3AEF2BFD096A0057F9B9 /* Release */ = {
+		96DBFBF72C084A55002CF548 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"AppcircleMonoRepo/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Appcircle/Preview Content\"";
 				DEVELOPMENT_TEAM = 8U2Z24R99J;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = AppcircleMonoRepo/MonoRepoInfo.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = AppcircleMono;
+				INFOPLIST_FILE = MonoRepo.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.appcircle.AppcircleMonoRepo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -899,11 +902,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		960F3AF02BFD096A0057F9B9 /* Build configuration list for PBXNativeTarget "AppcircleMonoRepo" */ = {
+		96DBFBF52C084A55002CF548 /* Build configuration list for PBXNativeTarget "AppcircleMonoRepo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				960F3AEE2BFD096A0057F9B9 /* Debug */,
-				960F3AEF2BFD096A0057F9B9 /* Release */,
+				96DBFBF62C084A55002CF548 /* Debug */,
+				96DBFBF72C084A55002CF548 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -912,6 +915,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		450FAD91277C4D4D00C3060D /* FizzBuzzKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FizzBuzzKit;
+		};
+		96DBFBE82C084A55002CF548 /* FizzBuzzKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FizzBuzzKit;
 		};
