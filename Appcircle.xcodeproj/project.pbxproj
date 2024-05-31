@@ -17,6 +17,10 @@
 		450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 450FAD91277C4D4D00C3060D /* FizzBuzzKit */; };
 		965115AB2BB706D40094E519 /* Pods_Appcircle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; };
 		965115AC2BB706D40094E519 /* Pods_Appcircle.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 965115AA2BB706D40094E519 /* Pods_Appcircle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		96DBFC132C09B06A002CF548 /* AppcircleMonoRepoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DBFC122C09B06A002CF548 /* AppcircleMonoRepoApp.swift */; };
+		96DBFC152C09B06A002CF548 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DBFC142C09B06A002CF548 /* ContentView.swift */; };
+		96DBFC172C09B06B002CF548 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 96DBFC162C09B06B002CF548 /* Assets.xcassets */; };
+		96DBFC1A2C09B06B002CF548 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 96DBFC192C09B06B002CF548 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,6 +37,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 450FAD61277C4BBC00C3060D;
 			remoteInfo = Appcircle;
+		};
+		96DBFC1E2C09B10D002CF548 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 450FAD5A277C4BBC00C3060D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 96DBFC0F2C09B06A002CF548;
+			remoteInfo = AppcircleMonoRepo;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -69,6 +80,12 @@
 		8822187C3BBED735C1EBDCFE /* Pods-Appcircle-AppcircleUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle-AppcircleUITests.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle-AppcircleUITests/Pods-Appcircle-AppcircleUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		965115AA2BB706D40094E519 /* Pods_Appcircle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Appcircle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		96A6ABA92B47DBB700FA8783 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		96DBFC102C09B06A002CF548 /* AppcircleMonoRepo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AppcircleMonoRepo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		96DBFC122C09B06A002CF548 /* AppcircleMonoRepoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcircleMonoRepoApp.swift; sourceTree = "<group>"; };
+		96DBFC142C09B06A002CF548 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		96DBFC162C09B06B002CF548 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		96DBFC192C09B06B002CF548 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		96DBFC202C09B122002CF548 /* MonoInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MonoInfo.plist; sourceTree = "<group>"; };
 		9CA672B203BF1AB373CC906E /* Pods_AppcircleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppcircleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41578F903125A0CD7D4C6D1 /* Pods-Appcircle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.release.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.release.xcconfig"; sourceTree = "<group>"; };
 		E575E4F72A6E7F435A20C2F5 /* Pods-Appcircle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Appcircle.debug.xcconfig"; path = "Target Support Files/Pods-Appcircle/Pods-Appcircle.debug.xcconfig"; sourceTree = "<group>"; };
@@ -99,6 +116,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96DBFC0D2C09B06A002CF548 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -109,6 +133,7 @@
 				450FAD64277C4BBC00C3060D /* Appcircle */,
 				450FAD75277C4BBF00C3060D /* AppcircleTests */,
 				450FAD7F277C4BBF00C3060D /* AppcircleUITests */,
+				96DBFC112C09B06A002CF548 /* AppcircleMonoRepo */,
 				450FAD63277C4BBC00C3060D /* Products */,
 				450FAD90277C4D4D00C3060D /* Frameworks */,
 				B1F44333DE4BA7CE83A6EEB4 /* Pods */,
@@ -121,6 +146,7 @@
 				450FAD62277C4BBC00C3060D /* Appcircle.app */,
 				450FAD72277C4BBF00C3060D /* AppcircleTests.xctest */,
 				450FAD7C277C4BBF00C3060D /* AppcircleUITests.xctest */,
+				96DBFC102C09B06A002CF548 /* AppcircleMonoRepo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -173,6 +199,26 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		96DBFC112C09B06A002CF548 /* AppcircleMonoRepo */ = {
+			isa = PBXGroup;
+			children = (
+				96DBFC122C09B06A002CF548 /* AppcircleMonoRepoApp.swift */,
+				96DBFC142C09B06A002CF548 /* ContentView.swift */,
+				96DBFC162C09B06B002CF548 /* Assets.xcassets */,
+				96DBFC182C09B06B002CF548 /* Preview Content */,
+				96DBFC202C09B122002CF548 /* MonoInfo.plist */,
+			);
+			path = AppcircleMonoRepo;
+			sourceTree = "<group>";
+		};
+		96DBFC182C09B06B002CF548 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				96DBFC192C09B06B002CF548 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
 		B1F44333DE4BA7CE83A6EEB4 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -202,6 +248,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				96DBFC1F2C09B10D002CF548 /* PBXTargetDependency */,
 			);
 			name = Appcircle;
 			packageProductDependencies = (
@@ -249,6 +296,23 @@
 			productReference = 450FAD7C277C4BBF00C3060D /* AppcircleUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		96DBFC0F2C09B06A002CF548 /* AppcircleMonoRepo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 96DBFC1D2C09B06B002CF548 /* Build configuration list for PBXNativeTarget "AppcircleMonoRepo" */;
+			buildPhases = (
+				96DBFC0C2C09B06A002CF548 /* Sources */,
+				96DBFC0D2C09B06A002CF548 /* Frameworks */,
+				96DBFC0E2C09B06A002CF548 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AppcircleMonoRepo;
+			productName = AppcircleMonoRepo;
+			productReference = 96DBFC102C09B06A002CF548 /* AppcircleMonoRepo.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -256,7 +320,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1320;
+				LastSwiftUpdateCheck = 1520;
 				LastUpgradeCheck = 1320;
 				TargetAttributes = {
 					450FAD61277C4BBC00C3060D = {
@@ -269,6 +333,9 @@
 					450FAD7B277C4BBF00C3060D = {
 						CreatedOnToolsVersion = 13.2.1;
 						TestTargetID = 450FAD61277C4BBC00C3060D;
+					};
+					96DBFC0F2C09B06A002CF548 = {
+						CreatedOnToolsVersion = 15.2;
 					};
 				};
 			};
@@ -286,6 +353,7 @@
 			projectRoot = "";
 			targets = (
 				450FAD61277C4BBC00C3060D /* Appcircle */,
+				96DBFC0F2C09B06A002CF548 /* AppcircleMonoRepo */,
 				450FAD71277C4BBF00C3060D /* AppcircleTests */,
 				450FAD7B277C4BBF00C3060D /* AppcircleUITests */,
 			);
@@ -313,6 +381,15 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		96DBFC0E2C09B06A002CF548 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				96DBFC1A2C09B06B002CF548 /* Preview Assets.xcassets in Resources */,
+				96DBFC172C09B06B002CF548 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -414,6 +491,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96DBFC0C2C09B06A002CF548 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				96DBFC152C09B06A002CF548 /* ContentView.swift in Sources */,
+				96DBFC132C09B06A002CF548 /* AppcircleMonoRepoApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -426,6 +512,11 @@
 			isa = PBXTargetDependency;
 			target = 450FAD61277C4BBC00C3060D /* Appcircle */;
 			targetProxy = 450FAD7D277C4BBF00C3060D /* PBXContainerItemProxy */;
+		};
+		96DBFC1F2C09B10D002CF548 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 96DBFC0F2C09B06A002CF548 /* AppcircleMonoRepo */;
+			targetProxy = 96DBFC1E2C09B10D002CF548 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -697,6 +788,79 @@
 			};
 			name = Release;
 		};
+		96DBFC1B2C09B06B002CF548 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"AppcircleMonoRepo/Preview Content\"";
+				DEVELOPMENT_TEAM = W8Q5W49586;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AppcircleMonoRepo/MonoInfo.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.AppcircleMonoRepo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		96DBFC1C2C09B06B002CF548 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"AppcircleMonoRepo/Preview Content\"";
+				DEVELOPMENT_TEAM = W8Q5W49586;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AppcircleMonoRepo/MonoInfo.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.appcircle.AppcircleMonoRepo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -732,6 +896,15 @@
 			buildConfigurations = (
 				450FAD8D277C4BBF00C3060D /* Debug */,
 				450FAD8E277C4BBF00C3060D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		96DBFC1D2C09B06B002CF548 /* Build configuration list for PBXNativeTarget "AppcircleMonoRepo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				96DBFC1B2C09B06B002CF548 /* Debug */,
+				96DBFC1C2C09B06B002CF548 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
