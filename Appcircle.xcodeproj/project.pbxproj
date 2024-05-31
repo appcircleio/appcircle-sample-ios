@@ -42,13 +42,6 @@
 			remoteGlobalIDString = 450FAD61277C4BBC00C3060D;
 			remoteInfo = Appcircle;
 		};
-		96DBFC082C09AB15002CF548 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 450FAD5A277C4BBC00C3060D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 96DBFBE72C084A55002CF548;
-			remoteInfo = AppcircleMonoRepo;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -241,7 +234,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				96DBFC092C09AB15002CF548 /* PBXTargetDependency */,
 			);
 			name = Appcircle;
 			packageProductDependencies = (
@@ -530,11 +522,6 @@
 			isa = PBXTargetDependency;
 			target = 450FAD61277C4BBC00C3060D /* Appcircle */;
 			targetProxy = 450FAD7D277C4BBF00C3060D /* PBXContainerItemProxy */;
-		};
-		96DBFC092C09AB15002CF548 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 96DBFBE72C084A55002CF548 /* AppcircleMonoRepo */;
-			targetProxy = 96DBFC082C09AB15002CF548 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
