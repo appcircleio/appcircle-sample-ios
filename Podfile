@@ -6,17 +6,7 @@ target 'Appcircle' do
   use_frameworks!
 
   # Pods for Appcircle
-        pod 'FirebaseAuth' 
-  	    pod 'FirebaseAnalytics'
-  	    pod 'FirebaseRemoteConfig'
-  	    pod 'FirebaseStorage'
-  	    pod 'FirebaseMessaging'
-	      pod 'AFNetworking'
-  	    pod 'SDWebImage'
-  	    pod 'Moya'
-	      pod 'Starscream'
-	      pod 'SnapKit'
-	      pod 'Masonry'
+
 
 
   target 'AppcircleTests' do
