@@ -28,7 +28,6 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       systemAttachmentLifetime = "keepAlways"
-      preferredScreenCaptureFormat = "screenshots"
       codeCoverageEnabled = "YES">
       <Testables>
          <TestableReference
