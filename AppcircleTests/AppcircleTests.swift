@@ -24,18 +24,18 @@ class AppcircleTests: XCTestCase {
         XCTAssertTrue(true,"iPhone 8 Test")
     }
     
-//    func testSkipiPhone14() throws {
-//        let simulator = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] ?? "No Name"
-//        try XCTSkipIf(simulator.contains("iPhone 14"), "Skip this test on iPhone 14*")
-//        XCTAssertTrue(true,"iPhone 14 Test")
-//    }
+    func testSkipiPhone14() throws {
+        let simulator = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] ?? "No Name"
+        try XCTSkipIf(simulator.contains("iPhone 14"), "Skip this test on iPhone 14*")
+        XCTAssertTrue(true,"iPhone 14 Test")
+    }
 
     
-//    func testExpectedFailure() throws {
-//        let thingThatFails: Bool = false
-//        XCTExpectFailure("Working on a fix for this problem.")
-//        XCTAssertTrue(thingThatFails, "This is not working right now.")
-//    }
+    func testExpectedFailure() throws {
+        let thingThatFails: Bool = false
+        XCTExpectFailure("Working on a fix for this problem.")
+        XCTAssertTrue(thingThatFails, "This is not working right now.")
+    }
         
     func testPass() throws {
         XCTAssertTrue(true, "This test should pass")
