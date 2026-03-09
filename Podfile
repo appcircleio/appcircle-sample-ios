@@ -2,7 +2,7 @@
 platform :ios, '15.0'
 
 target 'Appcircle' do
-  # Comment the next line if you don't want to use dynamic frameworks
+  # Comment the next line if you don't want to use dynamic frameworksasdasdasd
   use_frameworks!
 
   # Pods for Appcircle
