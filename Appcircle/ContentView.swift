@@ -28,9 +28,9 @@ struct ContentView: View {
 
         VStack{
             Text("Appcircle")
-    //        Image("Logo")
-    //            .resizable()
-    //            .frame(width: 64, height: 64)
+            Image("Logo")
+                .resizable()
+                .frame(width: 64, height: 64)
     //
     //        Form {
     //            TextField(text: $numberString, prompt: Text("Enter a number")) {
