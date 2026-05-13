@@ -14,8 +14,6 @@ target 'Appcircle' do
   	    pod 'SDWebImage'
   	    pod 'Moya'
 	      pod 'Starscream'
-	      pod 'SnapKit'
-	      pod 'Masonry'
 
 
   target 'AppcircleTests' do
