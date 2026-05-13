@@ -11,7 +11,6 @@ target 'Appcircle' do
   	    pod 'FirebaseRemoteConfig'
   	    pod 'FirebaseStorage'
   	    pod 'FirebaseMessaging'
-	      pod 'AFNetworking'
   	    pod 'SDWebImage'
   	    pod 'Moya'
 	      pod 'Starscream'
