@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: curl -fSL -o app.ipa "https://storage.googleapis.com/appcircle-dev-common/self-hosted/sample-apps/appcircle-sample-ios.ipa"
-      - uses: appcircleio/appcircle-testing-distribution-githubaction
+      - uses: appcircleio/appcircle-testing-distribution-githubaction@main
         with:
           personalAPIToken: ${{ secrets.AC_MARKETPLACE_TEST_API_KEY }}
           profileName: Marketplace-Github-Action-Test
@@ -14,8 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: curl -fSL -o app.ipa "https://storage.googleapis.com/appcircle-dev-common/self-hosted/sample-apps/appcircle-sample-ios.ipa"
-      - uses: appcircleio/appcircle-enterprise-app-store-githubaction
+      - uses: appcircleio/appcircle-enterprise-app-store-githubaction@main
         with:
           personalAPIToken: ${{ secrets.AC_MARKETPLACE_TEST_API_KEY }}
           appPath: app.ipa
-          
