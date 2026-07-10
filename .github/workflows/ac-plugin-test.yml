@@ -1,5 +1,8 @@
 name: AC Plugin Test
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - feature/pl-311-marketplacetest
 jobs:
   td-ios:
     runs-on: ubuntu-latest
