@@ -14,6 +14,7 @@ jobs:
           personalAPIToken: ${{ secrets.AC_MARKETPLACE_TEST_API_KEY }}
           profileName: Marketplace-Github-Action-Test
           appPath: app.ipa
+          createProfileIfNotExists: true
   eas-ios:
     runs-on: ubuntu-latest
     steps:
