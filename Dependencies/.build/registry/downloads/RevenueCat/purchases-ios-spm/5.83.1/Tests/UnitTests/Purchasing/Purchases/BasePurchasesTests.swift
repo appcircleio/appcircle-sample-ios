@@ -1,0 +1,894 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  BasePurchasesTests.swift
+//
+//  Created by Nacho Soto on 5/25/22.
+
+import Nimble
+import StoreKit
+import XCTest
+
+@testable import RevenueCat
+
+class BasePurchasesTests: TestCase {
+
+    private static let userDefaultsSuiteName = "TestDefaults"
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+
+        // Some tests rely on the level being at least `.debug`
+        // Because unit tests can run in parallel, if a test needs to modify
+        // this level it should be moved to `StoreKitUnitTests`, which runs serially.
+        Purchases.logLevel = .verbose
+
+        self.notificationCenter = MockNotificationCenter()
+        self.purchasesDelegate = MockPurchasesDelegate()
+
+        self.mockPaymentQueueWrapper = MockPaymentQueueWrapper()
+        self.mockSimulatedStorePurchaseHandler = MockSimulatedStorePurchaseHandler()
+
+        self.userDefaults = UserDefaults(suiteName: Self.userDefaultsSuiteName)
+        self.clock = TestClock()
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         storeKitVersion: self.storeKitVersion,
+                                         clock: self.clock)
+        self.storeKit1Wrapper = MockStoreKit1Wrapper(observerMode: self.systemInfo.observerMode)
+        self.deviceCache = MockDeviceCache(systemInfo: self.systemInfo,
+                                           userDefaults: self.userDefaults)
+        self.paywallCache = .init()
+        if #available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *) {
+            self.eventsManager = MockEventsManager()
+        } else {
+            self.eventsManager = nil
+        }
+        self.requestFetcher = MockRequestFetcher()
+        self.purchasedProductsFetcher = .init()
+        if #available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *) {
+            self.diagnosticsTracker = MockDiagnosticsTracker()
+        } else {
+            self.diagnosticsTracker = nil
+        }
+
+        self.mockProductsManager = MockProductsManager(diagnosticsTracker: self.diagnosticsTracker,
+                                                       systemInfo: self.systemInfo,
+                                                       requestTimeout: Configuration.storeKitRequestTimeoutDefault)
+        self.mockOperationDispatcher = MockOperationDispatcher()
+        self.mockReceiptParser = MockReceiptParser()
+        self.identityManager = MockIdentityManager(mockAppUserID: Self.appUserID, mockDeviceCache: self.deviceCache)
+        self.mockIntroEligibilityCalculator = MockIntroEligibilityCalculator(productsManager: self.mockProductsManager,
+                                                                             receiptParser: self.mockReceiptParser)
+        let platformInfo = Purchases.PlatformInfo(flavor: "iOS", version: "4.4.0")
+        let systemInfoAttribution = MockSystemInfo(platformInfo: platformInfo, finishTransactions: true)
+        self.receiptFetcher = MockReceiptFetcher(requestFetcher: self.requestFetcher, systemInfo: systemInfoAttribution)
+        self.attributionFetcher = MockAttributionFetcher(attributionFactory: MockAttributionTypeFactory(),
+                                                         systemInfo: systemInfoAttribution)
+        self.mockProductEntitlementMappingFetcher = MockProductEntitlementMappingFetcher()
+        self.mockPurchasedProductsFetcher = MockPurchasedProductsFetcher()
+        self.mockTransactionFetcher = MockStoreKit2TransactionFetcher()
+
+        let httpClient = MockHTTPClient(systemInfo: self.systemInfo,
+                                        eTagManager: MockETagManager(),
+                                        diagnosticsTracker: self.diagnosticsTracker)
+        let config = BackendConfiguration(httpClient: httpClient,
+                                          operationDispatcher: self.mockOperationDispatcher,
+                                          operationQueue: MockBackend.QueueProvider.createBackendQueue(),
+                                          diagnosticsQueue: MockBackend.QueueProvider.createDiagnosticsQueue(),
+                                          systemInfo: self.systemInfo,
+                                          offlineCustomerInfoCreator: MockOfflineCustomerInfoCreator(),
+                                          dateProvider: MockDateProvider(stubbedNow: MockBackend.referenceDate))
+        self.backend = MockBackend(backendConfig: config,
+                                   attributionFetcher: self.attributionFetcher,
+                                   mockAdsAPI: MockAdsAPI())
+        self.subscriberAttributesManager = MockSubscriberAttributesManager(
+            backend: self.backend,
+            deviceCache: self.deviceCache,
+            operationDispatcher: self.mockOperationDispatcher,
+            attributionFetcher: self.attributionFetcher,
+            attributionDataMigrator: AttributionDataMigrator()
+        )
+        self.attributionPoster = AttributionPoster(deviceCache: self.deviceCache,
+                                                   currentUserProvider: self.identityManager,
+                                                   backend: self.backend,
+                                                   attributionFetcher: self.attributionFetcher,
+                                                   subscriberAttributesManager: self.subscriberAttributesManager,
+                                                   systemInfo: self.systemInfo)
+        self.attribution = Attribution(subscriberAttributesManager: self.subscriberAttributesManager,
+                                       currentUserProvider: self.identityManager,
+                                       attributionPoster: self.attributionPoster,
+                                       systemInfo: self.systemInfo)
+        self.mockOfflineEntitlementsManager = MockOfflineEntitlementsManager()
+        self.mockLocalTransactionMetadataStore = MockLocalTransactionMetadataStore()
+        self.customerInfoManager = CustomerInfoManager(offlineEntitlementsManager: self.mockOfflineEntitlementsManager,
+                                                       operationDispatcher: self.mockOperationDispatcher,
+                                                       deviceCache: self.deviceCache,
+                                                       backend: self.backend,
+                                                       transactionFetcher: self.mockTransactionFetcher,
+                                                       transactionPoster: self.transactionPoster,
+                                                       systemInfo: self.systemInfo)
+        self.mockOfferingsManager = MockOfferingsManager(deviceCache: self.deviceCache,
+                                                         operationDispatcher: self.mockOperationDispatcher,
+                                                         systemInfo: self.systemInfo,
+                                                         backend: self.backend,
+                                                         offeringsFactory: self.offeringsFactory,
+                                                         productsManager: self.mockProductsManager,
+                                                         diagnosticsTracker: self.diagnosticsTracker)
+        self.mockManageSubsHelper = MockManageSubscriptionsHelper(systemInfo: self.systemInfo,
+                                                                  customerInfoManager: self.customerInfoManager,
+                                                                  currentUserProvider: self.identityManager)
+        self.mockBeginRefundRequestHelper = MockBeginRefundRequestHelper(systemInfo: self.systemInfo,
+                                                                         customerInfoManager: self.customerInfoManager,
+                                                                         currentUserProvider: self.identityManager)
+        self.mockTransactionsManager = MockTransactionsManager(receiptParser: self.mockReceiptParser)
+        self.mockStoreMessagesHelper = .init()
+        self.mockWinBackOfferEligibilityCalculator = MockWinBackOfferEligibilityCalculator()
+        self.mockVirtualCurrencyManager = MockVirtualCurrencyManager()
+        self.mockRemoteConfigManager = MockRemoteConfigManager()
+        self.webPurchaseRedemptionHelper = .init(backend: self.backend,
+                                                 identityManager: self.identityManager,
+                                                 customerInfoManager: self.customerInfoManager)
+
+        self.addTeardownBlock {
+            weak var purchases = self.purchases
+            weak var orchestrator = self.purchasesOrchestrator
+            weak var deviceCache = self.deviceCache
+
+            Purchases.clearSingleton()
+            self.clearReferences()
+
+            // Note: this captures the boolean to avoid race conditions when Nimble tries
+            // to print the instances while they're being deallocated.
+            expect { purchases == nil }
+                .toEventually(beTrue(), description: "Purchases has leaked")
+            expect { orchestrator == nil }
+                .toEventually(beTrue(), description: "PurchasesOrchestrator has leaked")
+            expect { deviceCache == nil }
+                .toEventually(beTrue(), description: "DeviceCache has leaked")
+        }
+    }
+
+    override func tearDown() {
+        self.userDefaults.removePersistentDomain(forName: Self.userDefaultsSuiteName)
+
+        super.tearDown()
+    }
+
+    var receiptFetcher: MockReceiptFetcher!
+    var requestFetcher: MockRequestFetcher!
+    var mockProductsManager: MockProductsManager!
+    var purchasedProductsFetcher: MockPurchasedProductsFetcher!
+    var backend: MockBackend!
+    var storeKit1Wrapper: MockStoreKit1Wrapper!
+    var mockPaymentQueueWrapper: MockPaymentQueueWrapper!
+    var mockSimulatedStorePurchaseHandler: MockSimulatedStorePurchaseHandler!
+    var notificationCenter: MockNotificationCenter!
+    var userDefaults: UserDefaults! = nil
+    let offeringsFactory = MockOfferingsFactory()
+    var deviceCache: MockDeviceCache!
+    var paywallCache: MockPaywallCacheWarming!
+    private var eventsManager: EventsManagerType?
+    var subscriberAttributesManager: MockSubscriberAttributesManager!
+    var attribution: Attribution!
+    var identityManager: MockIdentityManager!
+    var clock: TestClock!
+    var systemInfo: MockSystemInfo!
+    var mockOperationDispatcher: MockOperationDispatcher!
+    var mockIntroEligibilityCalculator: MockIntroEligibilityCalculator!
+    var mockReceiptParser: MockReceiptParser!
+    var mockTransactionsManager: MockTransactionsManager!
+    var attributionFetcher: MockAttributionFetcher!
+    var attributionPoster: AttributionPoster!
+    var customerInfoManager: CustomerInfoManager!
+    var mockOfferingsManager: MockOfferingsManager!
+    var mockOfflineEntitlementsManager: MockOfflineEntitlementsManager!
+    var mockProductEntitlementMappingFetcher: MockProductEntitlementMappingFetcher!
+    var mockPurchasedProductsFetcher: MockPurchasedProductsFetcher!
+    var mockTransactionFetcher: MockStoreKit2TransactionFetcher!
+    var purchasesOrchestrator: PurchasesOrchestrator!
+    var trialOrIntroPriceEligibilityChecker: MockTrialOrIntroPriceEligibilityChecker!
+    var cachingTrialOrIntroPriceEligibilityChecker: MockCachingTrialOrIntroPriceEligibilityChecker!
+    var mockManageSubsHelper: MockManageSubscriptionsHelper!
+    var mockBeginRefundRequestHelper: MockBeginRefundRequestHelper!
+    var mockStoreMessagesHelper: MockStoreMessagesHelper!
+    var mockWinBackOfferEligibilityCalculator: MockWinBackOfferEligibilityCalculator!
+    var webPurchaseRedemptionHelper: WebPurchaseRedemptionHelper!
+    var diagnosticsTracker: DiagnosticsTrackerType?
+    var mockVirtualCurrencyManager: MockVirtualCurrencyManager!
+    var mockRemoteConfigManager: MockRemoteConfigManager!
+    var mockLocalTransactionMetadataStore: MockLocalTransactionMetadataStore!
+    var transactionMetadataSyncHelper: TransactionMetadataSyncHelper!
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    var mockDiagnosticsTracker: MockDiagnosticsTracker {
+        get throws {
+            return try XCTUnwrap(self.diagnosticsTracker as? MockDiagnosticsTracker)
+        }
+    }
+
+    // swiftlint:disable:next weak_delegate
+    var purchasesDelegate: MockPurchasesDelegate!
+
+    var purchases: Purchases!
+
+    private var paymentQueueWrapper: EitherPaymentQueueWrapper {
+        // Note: this logic must match `Purchases`.
+        return self.systemInfo.storeKitVersion.isStoreKit2EnabledAndAvailable
+            ? .right(self.mockPaymentQueueWrapper)
+            : .left(self.storeKit1Wrapper)
+    }
+
+    private var transactionPoster: TransactionPoster {
+        return .init(
+            productsManager: self.mockProductsManager,
+            receiptFetcher: self.receiptFetcher,
+            transactionFetcher: self.mockTransactionFetcher,
+            backend: self.backend,
+            paymentQueueWrapper: self.paymentQueueWrapper,
+            systemInfo: self.systemInfo,
+            operationDispatcher: self.mockOperationDispatcher,
+            localTransactionMetadataStore: self.mockLocalTransactionMetadataStore
+        )
+    }
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    var mockEventsManager: MockEventsManager {
+        get throws {
+            return try XCTUnwrap(self.eventsManager as? MockEventsManager)
+        }
+    }
+
+    func setupPurchases(
+        automaticCollection: Bool = false,
+        withDelegate: Bool = true
+    ) {
+        self.identityManager.mockIsAnonymous = false
+
+        self.initializePurchasesInstance(
+            appUserId: self.identityManager.currentAppUserID,
+            withDelegate: withDelegate
+        )
+    }
+
+    func setupAnonPurchases() {
+        self.identityManager.mockIsAnonymous = true
+        self.initializePurchasesInstance(appUserId: nil)
+    }
+
+    func setUpPurchasesObserverModeOn() {
+        self.systemInfo = MockSystemInfo(platformInfo: nil,
+                                         finishTransactions: false,
+                                         storeKitVersion: self.storeKitVersion,
+                                         clock: self.clock)
+        self.storeKit1Wrapper = MockStoreKit1Wrapper(observerMode: true)
+        self.initializePurchasesInstance(appUserId: nil)
+    }
+
+    func initializePurchasesInstance(
+        appUserId: String?,
+        withDelegate: Bool = true
+    ) {
+        self.purchasesOrchestrator = PurchasesOrchestrator(
+            productsManager: self.mockProductsManager,
+            paymentQueueWrapper: self.paymentQueueWrapper,
+            simulatedStorePurchaseHandler: self.mockSimulatedStorePurchaseHandler,
+            systemInfo: self.systemInfo,
+            subscriberAttributes: self.attribution,
+            operationDispatcher: self.mockOperationDispatcher,
+            receiptFetcher: self.receiptFetcher,
+            receiptParser: self.mockReceiptParser,
+            transactionFetcher: self.mockTransactionFetcher,
+            customerInfoManager: self.customerInfoManager,
+            backend: self.backend,
+            transactionPoster: self.transactionPoster,
+            currentUserProvider: self.identityManager,
+            transactionsManager: self.mockTransactionsManager,
+            deviceCache: self.deviceCache,
+            offeringsManager: self.mockOfferingsManager,
+            manageSubscriptionsHelper: self.mockManageSubsHelper,
+            beginRefundRequestHelper: self.mockBeginRefundRequestHelper,
+            storeMessagesHelper: self.mockStoreMessagesHelper,
+            diagnosticsTracker: self.diagnosticsTracker,
+            winBackOfferEligibilityCalculator: self.mockWinBackOfferEligibilityCalculator,
+            eventsManager: self.eventsManager,
+            webPurchaseRedemptionHelper: self.webPurchaseRedemptionHelper
+        )
+        self.trialOrIntroPriceEligibilityChecker = MockTrialOrIntroPriceEligibilityChecker(
+            systemInfo: self.systemInfo,
+            receiptFetcher: self.receiptFetcher,
+            introEligibilityCalculator: self.mockIntroEligibilityCalculator,
+            backend: self.backend,
+            currentUserProvider: self.identityManager,
+            operationDispatcher: self.mockOperationDispatcher,
+            productsManager: self.mockProductsManager,
+            diagnosticsTracker: self.diagnosticsTracker
+        )
+        self.cachingTrialOrIntroPriceEligibilityChecker = .init(checker: self.trialOrIntroPriceEligibilityChecker)
+        let healthManager = SDKHealthManager(
+            backend: self.backend,
+            identityManager: self.identityManager
+        )
+
+        let transactionMetadataSyncHelper = TransactionMetadataSyncHelper(
+            customerInfoManager: self.customerInfoManager,
+            attribution: self.attribution,
+            currentUserProvider: self.identityManager,
+            operationDispatcher: self.mockOperationDispatcher,
+            transactionPoster: self.transactionPoster
+        )
+        self.transactionMetadataSyncHelper = transactionMetadataSyncHelper
+
+        self.purchases = Purchases(appUserID: appUserId,
+                                   requestFetcher: self.requestFetcher,
+                                   receiptFetcher: self.receiptFetcher,
+                                   attributionFetcher: self.attributionFetcher,
+                                   attributionPoster: self.attributionPoster,
+                                   backend: self.backend,
+                                   paymentQueueWrapper: paymentQueueWrapper,
+                                   userDefaults: self.userDefaults,
+                                   notificationCenter: self.notificationCenter,
+                                   systemInfo: self.systemInfo,
+                                   offeringsFactory: self.offeringsFactory,
+                                   deviceCache: self.deviceCache,
+                                   paywallCache: self.paywallCache,
+                                   identityManager: self.identityManager,
+                                   subscriberAttributes: self.attribution,
+                                   operationDispatcher: self.mockOperationDispatcher,
+                                   customerInfoManager: self.customerInfoManager,
+                                   eventsManager: self.eventsManager,
+                                   productsManager: self.mockProductsManager,
+                                   offeringsManager: self.mockOfferingsManager,
+                                   workflowManager: WorkflowManager(
+                                    workflowsConfigProvider: WorkflowsConfigProvider(
+                                        manager: self.mockRemoteConfigManager
+                                    ),
+                                    paywallCache: self.paywallCache,
+                                    operationDispatcher: self.mockOperationDispatcher
+                                   ),
+                                   remoteConfigManager: self.mockRemoteConfigManager,
+                                   offlineEntitlementsManager: self.mockOfflineEntitlementsManager,
+                                   purchasesOrchestrator: self.purchasesOrchestrator,
+                                   purchasedProductsFetcher: self.mockPurchasedProductsFetcher,
+                                   trialOrIntroPriceEligibilityChecker: self.cachingTrialOrIntroPriceEligibilityChecker,
+                                   storeMessagesHelper: self.mockStoreMessagesHelper,
+                                   diagnosticsTracker: self.diagnosticsTracker,
+                                   virtualCurrencyManager: self.mockVirtualCurrencyManager,
+                                   healthManager: healthManager,
+                                   transactionMetadataSyncHelper: transactionMetadataSyncHelper,
+                                   currentConfiguration: nil)
+
+        self.purchasesOrchestrator.delegate = self.purchases
+
+        if withDelegate {
+            self.purchases.delegate = self.purchasesDelegate
+        }
+
+        Purchases.setDefaultInstance(self.purchases)
+    }
+
+    func makeAPurchase() {
+        let product = StoreProduct(sk1Product: MockSK1Product(mockProductIdentifier: "com.product.id1"))
+
+        guard let purchases = self.purchases else { fatalError("purchases is not initialized") }
+        purchases.purchase(product: product) { _, _, _, _ in }
+
+        let transaction = MockTransaction()
+        transaction.mockPayment = self.storeKit1Wrapper.payment!
+        transaction.mockState = SKPaymentTransactionState.purchased
+
+        self.storeKit1Wrapper.delegate?.storeKit1Wrapper(self.storeKit1Wrapper, updatedTransaction: transaction)
+    }
+
+    var storeKitVersion: StoreKitVersion {
+        // Even though the new default is StoreKit 2, most of the tests from this parent class
+        // were written for SK1. Therefore we want to default to it being disabled.
+        return .storeKit1
+    }
+
+}
+
+extension BasePurchasesTests {
+
+    static let appUserID = "app_user_id"
+
+    static let emptyCustomerInfoData: [String: Any] = [
+        "request_date": "2019-08-16T10:30:42Z",
+        "subscriber": [
+            "first_seen": "2019-07-17T00:05:54Z",
+            "original_app_user_id": BasePurchasesTests.appUserID,
+            "subscriptions": [:] as [String: Any],
+            "other_purchases": [:] as [String: Any],
+            "original_application_version": NSNull()
+        ] as [String: Any]
+    ]
+
+}
+
+extension BasePurchasesTests {
+
+    final class MockOfferingsAPI: OfferingsAPI {
+
+        var postedProductIdentifiers: Set<String>?
+
+        override func getIntroEligibility(appUserID: String,
+                                          receiptData: Data,
+                                          productIdentifiers: Set<String>,
+                                          completion: @escaping OfferingsAPI.IntroEligibilityResponseHandler) {
+            self.postedProductIdentifiers = productIdentifiers
+
+            var eligibilities = [String: IntroEligibility]()
+            for productID in productIdentifiers {
+                eligibilities[productID] = IntroEligibility(eligibilityStatus: .eligible)
+            }
+
+            completion(eligibilities, nil)
+        }
+
+        var failOfferings = false
+        var badOfferingsResponse = false
+        var gotOfferings = 0
+
+        override func getOfferings(appUserID: String,
+                                   isAppBackgrounded: Bool,
+                                   decodingMode: OfferingsResponse.DecodingMode = .withPaywallComponents,
+                                   completion: @escaping OfferingsAPI.OfferingsResponseHandler) {
+            self.gotOfferings += 1
+            if self.failOfferings {
+                completion(.failure(.unexpectedBackendResponse(.getOfferUnexpectedResponse)))
+                return
+            }
+            if self.badOfferingsResponse {
+                completion(.failure(.networkError(.decoding(CodableError.invalidJSONObject(value: [:]), Data()))))
+                return
+            }
+
+            completion(.success(.init(contents: .mockContents, rawResponseData: nil)))
+        }
+
+        var postOfferForSigningCalled = false
+        var postOfferForSigningPaymentDiscountResponse: Result<[String: Any], BackendError> = .success([:])
+
+        override func post(offerIdForSigning offerIdentifier: String,
+                           productIdentifier: String,
+                           subscriptionGroup: String?,
+                           receipt: EncodedAppleReceipt,
+                           appUserID: String,
+                           completion: @escaping OfferingsAPI.OfferSigningResponseHandler) {
+            self.postOfferForSigningCalled = true
+
+            completion(
+                self.postOfferForSigningPaymentDiscountResponse.map {
+                    (
+                        // swiftlint:disable:next force_cast line_length
+                        $0["signature"] as! String, $0["keyIdentifier"] as! String, $0["nonce"] as! UUID, $0["timestamp"] as! Int
+                    )
+                }
+            )
+        }
+
+    }
+
+    enum MockBackendOperation: String {
+        case getCustomerInfo
+        case healthReport
+        case healthReportAvailability
+        case postReceipt
+        case postAttribution
+    }
+
+    final class MockBackend: Backend {
+
+        static let referenceDate = Date(timeIntervalSinceReferenceDate: 700000000) // 2023-03-08 20:26:40
+
+        /// Tracks the order in which backend methods are called.
+        var callOrder: [MockBackendOperation] = []
+
+        convenience init(backendConfig: BackendConfiguration,
+                         attributionFetcher: AttributionFetcher,
+                         mockAdsAPI: MockAdsAPI) {
+            let customer = CustomerAPI(backendConfig: backendConfig, attributionFetcher: attributionFetcher)
+            let identity = IdentityAPI(backendConfig: backendConfig)
+            let offerings = OfferingsAPI(backendConfig: backendConfig)
+            let webBilling = WebBillingAPI(backendConfig: backendConfig)
+            let offlineEntitlements = OfflineEntitlementsAPI(backendConfig: backendConfig)
+            let internalAPI = InternalAPI(backendConfig: backendConfig)
+            let customerCenterConfig = CustomerCenterConfigAPI(backendConfig: backendConfig)
+            let redeemWebPurchaseAPI = RedeemWebPurchaseAPI(backendConfig: backendConfig)
+            let virtualCurrenciesAPI = VirtualCurrenciesAPI(backendConfig: backendConfig)
+            let remoteConfigAPI = RemoteConfigAPI(backendConfig: backendConfig)
+
+            self.init(backendConfig: backendConfig,
+                      customerAPI: customer,
+                      identityAPI: identity,
+                      offeringsAPI: offerings,
+                      webBillingAPI: webBilling,
+                      offlineEntitlements: offlineEntitlements,
+                      internalAPI: internalAPI,
+                      customerCenterConfig: customerCenterConfig,
+                      redeemWebPurchaseAPI: redeemWebPurchaseAPI,
+                      virtualCurrenciesAPI: virtualCurrenciesAPI,
+                      adsAPI: mockAdsAPI,
+                      remoteConfigAPI: remoteConfigAPI)
+        }
+
+        var userID: String?
+        var originalApplicationVersion: String?
+        var originalPurchaseDate: Date?
+        var getCustomerInfoCallCount = 0
+        var overrideCustomerInfoResult: Result<CustomerInfo, BackendError> = .success(
+            // swiftlint:disable:next force_try
+            try! CustomerInfo(data: BasePurchasesTests.emptyCustomerInfoData)
+        )
+
+        override func getCustomerInfo(appUserID: String,
+                                      isAppBackgrounded: Bool,
+                                      allowComputingOffline: Bool,
+                                      completion: @escaping CustomerAPI.CustomerInfoResponseHandler) {
+            self.callOrder.append(.getCustomerInfo)
+            self.getCustomerInfoCallCount += 1
+            self.userID = appUserID
+
+            let result = self.overrideCustomerInfoResult
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+
+        var healthReportRequests = [String]()
+        override func healthReportRequest(appUserID: String) async throws -> HealthReport {
+            self.callOrder.append(.healthReport)
+            healthReportRequests += [appUserID]
+
+            return .init(
+                status: .passed,
+                projectId: nil,
+                appId: nil,
+                checks: []
+            )
+        }
+
+        var overrideHealthReportAvailabilityResponse = HealthReportAvailability(reportLogs: true)
+        var healthReportAvailabilityRequests = [String]()
+        override func healthReportAvailabilityRequest(appUserID: String) async throws -> HealthReportAvailability {
+            self.callOrder.append(.healthReportAvailability)
+            healthReportAvailabilityRequests.append(appUserID)
+
+            return overrideHealthReportAvailabilityResponse
+        }
+
+        var postReceiptDataCalled = false
+        var postReceiptDataCallCount = 0
+        var postedReceiptData: EncodedAppleReceipt?
+        var postedIsRestore: Bool?
+        var postedProductID: String?
+        var postedPrice: Decimal?
+        var postedPaymentMode: StoreProductDiscount.PaymentMode?
+        var postedIntroPrice: Decimal?
+        var postedCurrencyCode: String?
+        var postedSubscriptionGroup: String?
+        var postedDiscounts: [StoreProductDiscount]?
+        var postedOfferingIdentifier: String?
+        var postedObserverMode: Bool?
+        var postedInitiationSource: PostReceiptSource.InitiationSource?
+        var postReceiptResult: Result<CustomerInfo, BackendError>?
+        var postedAssociatedTransactionIds: [String?] = []
+
+        override func post(receipt: EncodedAppleReceipt,
+                           productData: ProductRequestData?,
+                           transactionData: PurchasedTransactionData,
+                           postReceiptSource: PostReceiptSource,
+                           observerMode: Bool,
+                           originalPurchaseCompletedBy: PurchasesAreCompletedBy?,
+                           appTransaction: String? = nil,
+                           associatedTransactionId: String? = nil,
+                           sdkOriginated: Bool = false,
+                           appUserID: String,
+                           containsAttributionData: Bool = false,
+                           completion: @escaping CustomerAPI.CustomerInfoResponseHandler) {
+            self.callOrder.append(.postReceipt)
+            self.postReceiptDataCalled = true
+            self.postReceiptDataCallCount += 1
+            self.userID = appUserID
+            self.postedReceiptData = receipt
+            self.postedIsRestore = postReceiptSource.isRestore
+            self.postedAssociatedTransactionIds.append(associatedTransactionId)
+
+            if let productData = productData {
+                self.postedProductID = productData.productIdentifier
+                self.postedPrice = productData.price
+
+                self.postedPaymentMode = productData.paymentMode
+                self.postedIntroPrice = productData.introPrice
+                self.postedSubscriptionGroup = productData.subscriptionGroup
+
+                self.postedCurrencyCode = productData.currencyCode
+                self.postedDiscounts = productData.discounts
+            }
+
+            self.postedOfferingIdentifier = transactionData.presentedOfferingContext?.offeringIdentifier
+            self.postedObserverMode = observerMode
+            self.postedInitiationSource = postReceiptSource.initiationSource
+
+            completion(self.postReceiptResult ?? .failure(.missingAppUserID()))
+        }
+
+        var invokedPostAttributionData = false
+        var invokedPostAttributionDataCount = 0
+        var invokedPostAttributionDataParameters: (
+            data: [String: Any]?,
+            network: AttributionNetwork,
+            appUserID: String?
+        )?
+        var invokedPostAttributionDataParametersList = [(data: [String: Any]?,
+                                                         network: AttributionNetwork,
+                                                         appUserID: String?)]()
+        var stubbedPostAttributionDataCompletionResult: (BackendError?, Void)?
+
+        override func post(attributionData: [String: Any],
+                           network: AttributionNetwork,
+                           appUserID: String,
+                           completion: ((BackendError?) -> Void)? = nil) {
+            self.callOrder.append(.postAttribution)
+            self.invokedPostAttributionData = true
+            self.invokedPostAttributionDataCount += 1
+            self.invokedPostAttributionDataParameters = (attributionData, network, appUserID)
+            self.invokedPostAttributionDataParametersList.append((attributionData, network, appUserID))
+            if let result = stubbedPostAttributionDataCompletionResult {
+                completion?(result.0)
+            }
+        }
+
+        var invokedIsPurchaseAllowedByRestoreBehavior = false
+        var invokedIsPurchaseAllowedByRestoreBehaviorCount = 0
+        var invokedIsPurchaseAllowedByRestoreBehaviorParameters:
+        (appUserID: String, transactionJWS: String, isAppBackgrounded: Bool)?
+        var stubbedIsPurchaseAllowedByRestoreBehaviorResult:
+        Result<IsPurchaseAllowedByRestoreBehaviorResponse, BackendError> = .failure(.missingAppUserID())
+
+        override func isPurchaseAllowedByRestoreBehavior(
+            appUserID: String,
+            transactionJWS: String,
+            isAppBackgrounded: Bool,
+            completion: @escaping CustomerAPI.IsPurchaseAllowedByRestoreBehaviorResponseHandler
+        ) {
+            self.invokedIsPurchaseAllowedByRestoreBehavior = true
+            self.invokedIsPurchaseAllowedByRestoreBehaviorCount += 1
+            self.invokedIsPurchaseAllowedByRestoreBehaviorParameters = (
+                appUserID,
+                transactionJWS,
+                isAppBackgrounded
+            )
+
+            completion(self.stubbedIsPurchaseAllowedByRestoreBehaviorResult)
+        }
+    }
+}
+
+extension BasePurchasesTests.MockBackend: @unchecked Sendable {}
+extension BasePurchasesTests.MockOfferingsAPI: @unchecked Sendable {}
+
+final class MockRemoteConfigManager: RemoteConfigManagerType {
+
+    struct RefreshParameters {
+        let fetchContext: RemoteConfigFetchContext
+        let isAppBackgrounded: Bool
+    }
+
+    var isDisabled = false
+    var onRemoteConfigDisabled: (() -> Void)?
+    var onConfigGenerationRead: (() -> Void)?
+    var configGeneration: Int {
+        get {
+            defer { self.onConfigGenerationRead?() }
+            return self.configGenerationStorage
+        }
+        set {
+            self.configGenerationStorage = newValue
+        }
+    }
+    private var configGenerationStorage = 0
+
+    private(set) var invokedRefreshRemoteConfigCount = 0
+    private(set) var invokedRefreshRemoteConfigIfStaleCount = 0
+    private(set) var invokedClearCacheCount = 0
+    private(set) var invokedCloseCount = 0
+    private(set) var invokedRefreshRemoteConfigParametersList: [RefreshParameters] = []
+    private(set) var invokedRefreshRemoteConfigIfStaleParametersList: [RefreshParameters] = []
+    private(set) var invokedClearCacheAppUserIDs: [String] = []
+
+    func refreshRemoteConfig(fetchContext: RemoteConfigFetchContext, isAppBackgrounded: Bool) {
+        self.invokedRefreshRemoteConfigCount += 1
+        self.invokedRefreshRemoteConfigParametersList.append(
+            .init(fetchContext: fetchContext, isAppBackgrounded: isAppBackgrounded)
+        )
+    }
+
+    func refreshRemoteConfigIfStale(fetchContext: RemoteConfigFetchContext, isAppBackgrounded: Bool) {
+        self.invokedRefreshRemoteConfigIfStaleCount += 1
+        self.invokedRefreshRemoteConfigIfStaleParametersList.append(
+            .init(fetchContext: fetchContext, isAppBackgrounded: isAppBackgrounded)
+        )
+    }
+
+    var stubbedTopics: [RemoteConfigTopic: RemoteConfiguration.ConfigTopic] = [:]
+    var stubbedBlobData: [RemoteConfigTopic: [String: Data]] = [:]
+    // Atomic because UiConfigProvider now fetches its parts concurrently, so this can be appended to
+    // from multiple tasks at once.
+    private let _invokedBlobDataParameters: Atomic<[(topic: RemoteConfigTopic, itemKey: String)]> = .init([])
+    var invokedBlobDataParameters: [(topic: RemoteConfigTopic, itemKey: String)] {
+        return self._invokedBlobDataParameters.value
+    }
+    private let _invokedMergeItemsBlobDataParameters: Atomic<[(topic: RemoteConfigTopic, itemKeys: [String])]> =
+        .init([])
+    var invokedMergeItemsBlobDataParameters: [(topic: RemoteConfigTopic, itemKeys: [String])] {
+        return self._invokedMergeItemsBlobDataParameters.value
+    }
+
+    private let _invokedTopicCount: Atomic<Int> = .init(0)
+    var invokedTopicCount: Int { return self._invokedTopicCount.value }
+    /// When `true`, `topic(_:)` suspends until `completeStoredTopic()` resumes every stored
+    /// waiter (there can be several: e.g. a gated delivery plus a background refresh).
+    var shouldStoreTopicCompletion = false
+    /// Restricts held topic reads when `shouldStoreTopicCompletion` is true. `nil` preserves the
+    /// default behavior of holding every topic.
+    var storedTopicCompletionTopics: Set<RemoteConfigTopic>?
+    private let _storedTopicContinuations: Atomic<[CheckedContinuation<RemoteConfiguration.ConfigTopic?, Never>]> =
+        .init([])
+
+    func topic(_ topic: RemoteConfigTopic) async -> RemoteConfiguration.ConfigTopic? {
+        guard self.shouldStoreTopicCompletion,
+              self.storedTopicCompletionTopics?.contains(topic) ?? true else {
+            self._invokedTopicCount.modify { $0 += 1 }
+            return self.stubbedTopics[topic]
+        }
+        return await withCheckedContinuation { continuation in
+            // Store before incrementing, so a test polling `invokedTopicCount` can never
+            // observe readiness before `completeStoredTopic()` has something to resume.
+            self._storedTopicContinuations.modify { $0.append(continuation) }
+            self._invokedTopicCount.modify { $0 += 1 }
+        }
+    }
+
+    /// Resumes every waiter held while `shouldStoreTopicCompletion` was `true`, and stops
+    /// holding subsequent calls.
+    func completeStoredTopic(with result: RemoteConfiguration.ConfigTopic? = nil) {
+        self.shouldStoreTopicCompletion = false
+        for continuation in self._storedTopicContinuations.getAndSet([]) {
+            continuation.resume(returning: result)
+        }
+    }
+
+    /// When `true`, `blobData(for:itemKey:)` suspends until `completeStoredBlobReads()` is
+    /// called, so tests can control the timing of a caller resolving blob-backed data.
+    var shouldStoreBlobDataCompletion = false
+    private typealias StoredBlobRead = (
+        topic: RemoteConfigTopic, itemKey: String, continuation: CheckedContinuation<Data?, Never>
+    )
+    private let _storedBlobReads: Atomic<[StoredBlobRead]> = .init([])
+
+    func blobData(for topic: RemoteConfigTopic, itemKey: String) async -> Data? {
+        guard self.shouldStoreBlobDataCompletion else {
+            self._invokedBlobDataParameters.modify { $0.append((topic, itemKey)) }
+            return self.stubbedBlobData[topic]?[itemKey]
+        }
+        return await withCheckedContinuation { continuation in
+            // Store before recording, so a poller can't observe readiness with nothing to resume.
+            self._storedBlobReads.modify { $0.append((topic, itemKey, continuation)) }
+            self._invokedBlobDataParameters.modify { $0.append((topic, itemKey)) }
+        }
+    }
+
+    /// Resumes every held blob read with its key's stubbed data and stops holding subsequent
+    /// reads, so sequential read chains (like `mergeItemsBlobData`'s loop) run to completion.
+    func completeStoredBlobReads() {
+        self.shouldStoreBlobDataCompletion = false
+        for read in self._storedBlobReads.getAndSet([]) {
+            read.continuation.resume(returning: self.stubbedBlobData[read.topic]?[read.itemKey])
+        }
+    }
+
+    func blobData<T: Decodable>(
+        for topic: RemoteConfigTopic,
+        itemKey: String,
+        as type: T.Type
+    ) async throws -> T? {
+        guard let data = await self.blobData(for: topic, itemKey: itemKey) else { return nil }
+        return try JSONDecoder.default.decode(type, from: data)
+    }
+
+    var stubbedEnsureBlobsDownloadedResult = true
+    private let _invokedEnsureBlobsDownloadedRefs: Atomic<[[String]]> = .init([])
+    var invokedEnsureBlobsDownloadedRefs: [[String]] {
+        return self._invokedEnsureBlobsDownloadedRefs.value
+    }
+
+    func ensureBlobsDownloaded(_ refs: [String]) async -> Bool {
+        self._invokedEnsureBlobsDownloadedRefs.modify { $0.append(refs) }
+        return self.stubbedEnsureBlobsDownloadedResult
+    }
+
+    func mergeItemsBlobData<T: Decodable>(
+        for topic: RemoteConfigTopic,
+        itemKeys: [String],
+        as type: T.Type
+    ) async throws -> T? {
+        self._invokedMergeItemsBlobDataParameters.modify { $0.append((topic, itemKeys)) }
+        guard !self.isDisabled, !itemKeys.isEmpty else { return nil }
+
+        var mergedBlobValues: [String: AnyDecodable] = [:]
+        for itemKey in itemKeys.deduplicated() {
+            guard let data = await self.blobData(for: topic, itemKey: itemKey) else { return nil }
+            mergedBlobValues[itemKey] = try JSONDecoder.default.decode(AnyDecodable.self, from: data)
+        }
+
+        let mergedData = try JSONEncoder.default.encode(mergedBlobValues)
+        return try JSONDecoder.default.decode(type, from: mergedData)
+    }
+
+    func clearCache() {
+        self.configGeneration += 1
+        self.invokedClearCacheCount += 1
+    }
+
+    func clearCache(forAppUserID appUserID: String) {
+        self.configGeneration += 1
+        self.invokedClearCacheCount += 1
+        self.invokedClearCacheAppUserIDs.append(appUserID)
+    }
+
+    func close() {
+        self.invokedCloseCount += 1
+    }
+
+}
+
+private extension BasePurchasesTests {
+
+    func clearReferences() {
+        self.mockOperationDispatcher = nil
+        self.mockPaymentQueueWrapper = nil
+        self.mockSimulatedStorePurchaseHandler = nil
+        self.requestFetcher = nil
+        self.receiptFetcher = nil
+        self.mockProductsManager = nil
+        self.mockIntroEligibilityCalculator = nil
+        self.mockTransactionsManager = nil
+        self.backend = nil
+        self.attributionFetcher = nil
+        self.purchasesDelegate.makeDeferredPurchase = nil
+        self.purchasesDelegate = nil
+        self.storeKit1Wrapper.delegate = nil
+        self.storeKit1Wrapper = nil
+        self.systemInfo = nil
+        self.notificationCenter = nil
+        self.subscriberAttributesManager = nil
+        self.trialOrIntroPriceEligibilityChecker = nil
+        self.cachingTrialOrIntroPriceEligibilityChecker = nil
+        self.attributionPoster = nil
+        self.attribution = nil
+        self.customerInfoManager = nil
+        self.identityManager = nil
+        self.mockOfferingsManager = nil
+        self.mockOfflineEntitlementsManager = nil
+        self.mockPurchasedProductsFetcher = nil
+        self.mockTransactionFetcher = nil
+        self.mockManageSubsHelper = nil
+        self.mockBeginRefundRequestHelper = nil
+        self.purchasesOrchestrator = nil
+        self.deviceCache = nil
+        self.paywallCache = nil
+        self.eventsManager = nil
+        self.webPurchaseRedemptionHelper = nil
+        self.mockRemoteConfigManager = nil
+        self.transactionMetadataSyncHelper = nil
+        self.mockLocalTransactionMetadataStore = nil
+        self.purchases = nil
+    }
+
+}

@@ -1,0 +1,33 @@
+# pack-refs with: peeled fully-peeled sorted 
+ad5945388dffba6bb5c6d9193be20729972cfedb refs/heads/ah/app-check-interop
+cd07e25e11d6c9c70890da34b648c80a68dc2715 refs/heads/dependabot/bundler/bundler-3567caad51
+35d7f7dcc17c0a620e2f0e6b2758b97eed3a97eb refs/heads/main
+f7654c5150d30f08ea2623684c73ec4b2a1ee03a refs/pull/1/head
+ad5945388dffba6bb5c6d9193be20729972cfedb refs/pull/10/head
+563abd31f26046a624f3969c9a7458e28d0d482f refs/pull/11/head
+3057489daa545815d8ef2f59d5360b20f737a43d refs/pull/12/head
+9c7dcfbd0867664760a959889b0a9cd03ce7b649 refs/pull/13/head
+47401a18793ad491c423fd7a37c8abd4cee9d824 refs/pull/14/head
+ca5e99ad6d98afb15cc63195ce14bbb482651669 refs/pull/15/head
+5025670a3a41995784ada479f450f7b508ea1ad9 refs/pull/16/head
+601a3084b700888bf48d9895b4615014e53373b7 refs/pull/17/head
+73acad6292fe9d9d5321f95fc29b6c9e736c3b20 refs/pull/18/head
+23c479c74bd2e7bd938433eddb631ce66a58907e refs/pull/19/head
+db7a700fbe6c5308fa78343493fc90ed4888390d refs/pull/2/head
+cd07e25e11d6c9c70890da34b648c80a68dc2715 refs/pull/20/head
+dadd2d72747aaf7b6e82dfdb20bbc9fcdb8bb880 refs/pull/20/merge
+fcbb3a634e4d42c864e3d138b233bde7eb7425d8 refs/pull/3/head
+2723649519ac140fa95cff27f7ee7fe7bebb25fc refs/pull/4/head
+90ccea9b35a69b6a483367ce584d88d990f7c993 refs/pull/5/head
+1198b0786bca0fc07c7fb386800e34f69388968c refs/pull/6/head
+bdb1d665b83391b83dca1a6978cdcab25c4bda22 refs/pull/7/head
+c32c22b8363ba373facefc068aba0439e096bc3c refs/pull/8/head
+90d3050395904ca97314f39dc3c3ffd23fba5aae refs/pull/9/head
+66cf8a79ec9cd3d37097afce088621c55542b464 refs/tags/100.0.0
+^2d12673670417654f08f5f90fdd62926dc3a2648
+040d087ac2267d2ddd4cca36c757d1c6a05fdbfe refs/tags/101.0.0
+e3b2b9b8ce97383a762ef177e27c9a29b5c246c5 refs/tags/CocoaPods-100.0.0
+^2d12673670417654f08f5f90fdd62926dc3a2648
+1146999df381cd6ba6b5fa7e10688447a97939d4 refs/tags/CocoaPods-100.1.0
+^ad5945388dffba6bb5c6d9193be20729972cfedb
+040d087ac2267d2ddd4cca36c757d1c6a05fdbfe refs/tags/CocoaPods-101.0.0

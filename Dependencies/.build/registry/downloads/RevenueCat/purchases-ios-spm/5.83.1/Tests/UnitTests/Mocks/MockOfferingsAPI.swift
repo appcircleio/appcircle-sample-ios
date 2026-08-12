@@ -1,0 +1,128 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  MockOfferingsAPI.swift
+//
+//  Created by Joshua Liebowitz on 6/17/22.
+
+import Foundation
+@testable import RevenueCat
+
+// swiftlint:disable line_length large_tuple
+class MockOfferingsAPI: OfferingsAPI {
+
+    var invokedGetIntroEligibility = false
+    var invokedGetIntroEligibilityCount = 0
+    var invokedGetIntroEligibilityParameters: (appUserID: String?, receiptData: Data?, productIdentifiers: Set<String>?, completion: OfferingsAPI.IntroEligibilityResponseHandler?)?
+    var invokedGetIntroEligibilityParametersList = [(appUserID: String?,
+                                                     receiptData: Data?,
+                                                     productIdentifiers: Set<String>?,
+                                                     completion: OfferingsAPI.IntroEligibilityResponseHandler?)]()
+    var stubbedGetIntroEligibilityCompletionResult: (eligibilities: [String: IntroEligibility], error: BackendError?)?
+
+    override func getIntroEligibility(appUserID: String,
+                                      receiptData: Data,
+                                      productIdentifiers: Set<String>,
+                                      completion: @escaping IntroEligibilityResponseHandler) {
+        self.invokedGetIntroEligibility = true
+        self.invokedGetIntroEligibilityCount += 1
+        self.invokedGetIntroEligibilityParameters = (appUserID, receiptData, productIdentifiers, completion)
+        self.invokedGetIntroEligibilityParametersList.append((appUserID, receiptData, productIdentifiers, completion))
+        completion(self.stubbedGetIntroEligibilityCompletionResult?.eligibilities ?? [:], self.stubbedGetIntroEligibilityCompletionResult?.error)
+    }
+
+    var invokedGetOfferingsForAppUserID = false
+    var invokedGetOfferingsForAppUserIDCount = 0
+    var invokedGetOfferingsForAppUserIDParameters: (appUserID: String?,
+                                                     isAppBackgrounded: Bool,
+                                                     decodingMode: OfferingsResponse.DecodingMode,
+                                                     completion: OfferingsAPI.OfferingsResponseHandler?)?
+    var invokedGetOfferingsForAppUserIDParametersList = [(appUserID: String?,
+                                                          isAppBackgrounded: Bool,
+                                                          decodingMode: OfferingsResponse.DecodingMode,
+                                                          completion: OfferingsAPI.OfferingsResponseHandler?)]()
+    var stubbedGetOfferingsCompletionResult: Result<Offerings.Contents, BackendError>?
+    var stubbedGetOfferingsRawResponseData: Data?
+    var getOfferingsHandler: ((OfferingsResponse.DecodingMode, @escaping OfferingsResponseHandler) -> Void)?
+
+    override func getOfferings(appUserID: String,
+                               isAppBackgrounded: Bool,
+                               decodingMode: OfferingsResponse.DecodingMode = .withPaywallComponents,
+                               completion: @escaping OfferingsResponseHandler) {
+        self.invokedGetOfferingsForAppUserID = true
+        self.invokedGetOfferingsForAppUserIDCount += 1
+        self.invokedGetOfferingsForAppUserIDParameters = (appUserID, isAppBackgrounded, decodingMode, completion)
+        self.invokedGetOfferingsForAppUserIDParametersList.append(
+            (appUserID, isAppBackgrounded, decodingMode, completion)
+        )
+
+        if let getOfferingsHandler {
+            getOfferingsHandler(decodingMode, completion)
+        } else {
+            completion(
+                self.stubbedGetOfferingsCompletionResult!.map {
+                    OfferingsFetchResult(contents: $0, rawResponseData: self.stubbedGetOfferingsRawResponseData)
+                }
+            )
+        }
+    }
+
+    var invokedGetWebOfferingProducts = false
+    var invokedGetWebOfferingProductsCount = 0
+    var invokedGetWebOfferingProductsParameters: (appUserID: String,
+                                                  completion: WebOfferingProductsResponseHandler)?
+    var stubbedGetWebOfferingProductsCompletionResult: Result<WebOfferingProductsResponse, BackendError>?
+
+    override func getWebOfferingProducts(appUserID: String,
+                                         completion: @escaping WebOfferingProductsResponseHandler) {
+        self.invokedGetWebOfferingProducts = true
+        self.invokedGetWebOfferingProductsCount += 1
+        self.invokedGetWebOfferingProductsParameters = (appUserID, completion)
+
+        completion(self.stubbedGetWebOfferingProductsCompletionResult!)
+    }
+
+    var invokedPostOffer = false
+    var invokedPostOfferCount = 0
+    var invokedPostOfferParameters: (offerIdentifier: String?, productIdentifier: String?, subscriptionGroup: String?, data: EncodedAppleReceipt?, applicationUsername: String?, completion: OfferingsAPI.OfferSigningResponseHandler?)?
+    var invokedPostOfferParametersList = [(offerIdentifier: String?,
+                                           productIdentifier: String?,
+                                           subscriptionGroup: String?,
+                                           data: EncodedAppleReceipt?,
+                                           applicationUsername: String?,
+                                           completion: OfferingsAPI.OfferSigningResponseHandler?)]()
+    var stubbedPostOfferCompletionResult: Result<PostOfferForSigningOperation.SigningData, BackendError>?
+
+    override func post(offerIdForSigning offerIdentifier: String,
+                       productIdentifier: String,
+                       subscriptionGroup: String?,
+                       receipt: EncodedAppleReceipt,
+                       appUserID: String,
+                       completion: @escaping OfferingsAPI.OfferSigningResponseHandler) {
+        self.invokedPostOffer = true
+        self.invokedPostOfferCount += 1
+        self.invokedPostOfferParameters = (offerIdentifier,
+                                           productIdentifier,
+                                           subscriptionGroup,
+                                           receipt,
+                                           appUserID,
+                                           completion)
+        self.invokedPostOfferParametersList.append((offerIdentifier,
+                                                    productIdentifier,
+                                                    subscriptionGroup,
+                                                    receipt,
+                                                    appUserID,
+                                                    completion))
+
+        completion(self.stubbedPostOfferCompletionResult ?? .failure(.missingAppUserID()))
+    }
+
+}
+
+extension MockOfferingsAPI: @unchecked Sendable {}

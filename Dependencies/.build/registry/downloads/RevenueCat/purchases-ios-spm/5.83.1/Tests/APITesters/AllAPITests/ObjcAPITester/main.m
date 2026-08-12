@@ -1,0 +1,109 @@
+//
+//  main.m
+//  MigrateTester
+//
+//  Created by Joshua Liebowitz on 6/18/21.
+//
+
+#import <Foundation/Foundation.h>
+#import "RCAdTrackerAPI.h"
+#import "RCAttributionAPI.h"
+#import "RCAttributionNetworkAPI.h"
+#import "RCBillingPlanTypeAPI.h"
+#import "RCConfigurationAPI.h"
+#import "RCCustomerInfoAPI.h"
+#import "RCDangerousSettingsAPI.h"
+#import "RCEntitlementInfoAPI.h"
+#import "RCEntitlementInfosAPI.h"
+#import "RCIntroEligibilityAPI.h"
+#import "RCInstallmentsInfoAPI.h"
+#import "RCNonSubscriptionTransactionAPI.h"
+#import "RCOfferingAPI.h"
+#import "RCOfferingsAPI.h"
+#import "RCPackageAPI.h"
+#import "RCPresentedOfferingContextAPI.h"
+#import "RCPromotionalOfferAPI.h"
+#import "RCPurchasesAPI.h"
+#import "RCPurchasesErrorCodeAPI.h"
+#import "RCRefundRequestStatusAPI.h"
+#import "RCPurchasesDiagnosticsAPI.h"
+#import "RCStorefrontAPI.h"
+#import "RCStoreProductAPI.h"
+#import "RCStoreProductDiscountAPI.h"
+#import "RCSubscriptionPeriodAPI.h"
+#import "RCTransactionAPI.h"
+#import "RCVerificationResultAPI.h"
+#import "RCPaywallViewControllerAPI.h"
+#import "RCCustomPaywallImpressionAPI.h"
+
+@import StoreKit;
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+
+        [RCAdTrackerAPI checkAPI];
+
+        [RCAttributionAPI checkAPI];
+        [RCAttributionNetworkAPI checkEnums];
+
+        [RCCustomerInfoAPI checkAPI];
+
+        [RCEntitlementInfoAPI checkAPI];
+        [RCEntitlementInfoAPI checkEnums];
+        [RCEntitlementInfosAPI checkAPI];
+
+        [RCIntroEligibilityAPI checkAPI];
+        [RCIntroEligibilityAPI checkEnums];
+
+        [RCInstallmentsInfoAPI checkAPI];
+        [RCInstallmentsInfoAPI checkInit];
+
+        [RCNonSubscriptionTransactionAPI checkAPI];
+
+        [RCOfferingAPI checkAPI];
+        [RCOfferingsAPI checkAPI];
+
+        [RCPackageAPI checkAPI];
+        [RCPackageAPI checkEnums];
+
+        [RCPresentOfferingContextAPI checkAPI];
+
+        [RCPromotionalOfferAPI checkAPI];
+
+        [RCPurchasesAPI checkAPI];
+        [RCPurchasesAPI checkConstants];
+        [RCPurchasesAPI checkEnums];
+
+        [RCConfigurationAPI checkAPI];
+
+        [RCDangerousSettingsAPI checkAPI];
+
+        [RCPurchasesErrorCodeAPI checkEnums];
+
+        [RCRefundRequestStatusAPI checkEnums];
+
+        [RCPurchasesDiagnosticsAPI checkAPI];
+
+        [RCStorefrontAPI checkAPI];
+
+        [RCStoreProductAPI checkAPI];
+
+        [RCStoreProductDiscountAPI checkAPI];
+        [RCStoreProductDiscountAPI checkPaymentModeEnum];
+
+        [RCSubscriptionPeriodAPI checkAPI];
+        [RCSubscriptionPeriodAPI checkUnitEnum];
+
+        [RCTransactionAPI checkAPI];
+
+        [RCVerificationResultAPI checkAPI];
+
+        if (@available(iOS 15.0, macOS 12.0, tvOS 15.0, *)) {
+            [RCPaywallViewControllerAPI checkAPI];
+            [RCCustomPaywallImpressionAPI checkAPI];
+        }
+
+        [RCBillingPlanTypeAPI checkAPI];
+    }
+    return 0;
+}

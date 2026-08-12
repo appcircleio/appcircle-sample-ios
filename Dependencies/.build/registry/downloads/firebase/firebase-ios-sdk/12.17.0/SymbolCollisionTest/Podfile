@@ -1,0 +1,64 @@
+platform :ios, '15.0'
+
+source 'https://github.com/firebase/SpecsDev.git'
+source 'https://github.com/firebase/SpecsStaging.git'
+source 'https://cdn.cocoapods.org/'
+
+target 'SymbolCollisionTest' do
+  use_frameworks!
+
+  # Firebase Pods
+    pod 'Firebase', :path => '../'
+    pod 'FirebaseABTesting', :path => '../'
+    pod 'FirebaseAppDistribution', :path => '../'
+    pod 'FirebaseAnalytics'
+    pod 'FirebaseAuth', :path => '../'
+    pod 'FirebaseCore', :path => '../'
+    pod 'FirebaseCoreExtension', :path => '../'
+    pod 'FirebaseCoreInternal', :path => '../'
+    pod 'FirebaseSessions', :path => '../'
+    pod 'FirebaseCrashlytics', :path => '../'
+    pod 'FirebaseDatabase', :path => '../'
+    pod 'FirebaseFirestore', :path => '../'
+    pod 'FirebaseFunctions', :path => '../'
+    pod 'FirebaseInAppMessaging', :path => '../'
+    pod 'FirebaseInstallations', :path => '../'
+    pod 'FirebaseMessaging', :path => '../'
+    pod 'FirebasePerformance', :path => '../'
+    pod 'FirebaseRemoteConfig', :path => '../'
+    pod 'FirebaseStorage', :path => '../'
+
+#    pod 'FirebaseUI'. - requires use_frameworks!
+
+    # Google Pods depending on a Firebase or GDT major version
+
+    # MLKit is incompatible with ARCore.
+    # duplicate symbol 'farmhashte::Fingerprint64WithSeeds. See #11003.
+    # pod 'GoogleMLKit'
+
+  # Other Google Pods
+    pod 'ARCore'
+#    pod 'GeoFire' -- requires Firebase/Database 4.0
+#    pod 'google-cast-sdk' -- abseil
+    pod 'Google-Mobile-Ads-SDK'
+    pod 'GoogleAnalytics'
+    pod 'GoogleMaps', '> 8'
+
+#    pod 'GoogleMobileVision' # After Firebase 6.8.0, conflicts with FirebaseML
+    pod 'GooglePlaces', '> 8'
+    pod 'GoogleSignIn', '> 6'
+    pod 'GTMAppAuth'
+    pod 'GoogleTagManager', '>= 7.4.6'
+    pod 'GoogleToolboxForMac'
+    pod 'GoogleUtilities'
+#    pod 'GTMHTTPFetcher' - conflicts with GTMSessionFetcher
+    pod 'GTMSessionFetcher'
+#    pod 'GVRSDK' -- absl and protobuf duplicates
+    pod 'leveldb-library'
+    pod 'nanopb'
+#    pod 'NearbyMessages' # - conflicts with google-cast-sdk
+    pod 'Protobuf'
+
+  # Non-Google Pods
+
+end

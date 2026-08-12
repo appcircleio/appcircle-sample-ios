@@ -1,0 +1,35 @@
+import("../../../../fastlane/Fastfile")
+
+desc "Update carthage commit"
+  lane :update_carthage_commit do
+  commit_hash = last_git_commit[:commit_hash]
+  sed_regex = 's|' + "main" + '|' + commit_hash + '|'
+  backup_extension = '.bck'
+  sh("sed", '-i', backup_extension, sed_regex, '../Cartfile')
+end
+
+lane :installation_tests do
+  prepare_for_carthage
+  load_spm_dependencies
+
+  Dir.chdir("..") do
+    # install without building, then remove the tests and build, so that carthage
+    # doesn't try to build the other installation tests and testing apps
+    sh "carthage", "update", "--no-build"
+    sh "rm", "-rf", "Carthage/Checkouts/purchases-root/Examples"
+    sh "rm", "-rf", "Carthage/Checkouts/purchases-root/Tests/InstallationTests/"
+    sh "rm", "-rf", "Carthage/Checkouts/purchases-root/Tests/APITesters/"
+    sh "rm", "-rf", "Carthage/Checkouts/purchases-root/Tests/TestingApps/"
+    sh "rm", "-rf", "Carthage/Checkouts/purchases-root/Tests/v3LoadShedderIntegration/"
+    sh "rm", "-rf", "Carthage/Checkouts/purchases-root/Tests/v4LoadShedderIntegration/"
+
+    # Carthage builds all schemes including ones we don't need, so let's nuke them before proceeding
+    schemes_directory = "Carthage/Checkouts/purchases-root/RevenueCat.xcodeproj/xcshareddata/xcschemes"
+    Dir.glob("#{schemes_directory}/*.xcscheme").each do |file_path|
+      next if File.basename(file_path) == "RevenueCat.xcscheme"
+      sh "rm", "-f", file_path
+    end
+
+    sh "carthage", "build", "--use-xcframeworks", "--verbose"
+  end
+end

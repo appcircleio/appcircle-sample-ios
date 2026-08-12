@@ -1,0 +1,1 @@
+// SPM registry wrapper

@@ -1,0 +1,40 @@
+{
+  "configurations" : [
+    {
+      "id" : "62C79EF4-8071-439C-B693-34F1E57211FC",
+      "name" : "Configuration 1",
+      "options" : {
+        "testTimeoutsEnabled" : true
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "environmentVariableEntries" : [
+      {
+        "key" : "RCRunningTests",
+        "value" : "1"
+      }
+    ],
+    "maximumTestExecutionTimeAllowance" : 1000,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:PaywallScreenshotTests.xcodeproj",
+      "identifier" : "D8BF606FC07CF46E0845E102",
+      "name" : "PaywallScreenshotTestsHostApp"
+    },
+    "testExecutionOrdering" : "random"
+  },
+  "testTargets" : [
+    {
+      "selectedTests" : [
+        "TakeScreenshotTests\/testPaywallValidationScreenshots()"
+      ],
+      "target" : {
+        "containerPath" : "container:PaywallScreenshotTests.xcodeproj",
+        "identifier" : "4504C21D9459D124BD328BF4",
+        "name" : "PaywallScreenshotTests"
+      }
+    }
+  ],
+  "version" : 1
+}

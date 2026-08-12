@@ -1,0 +1,236 @@
+{
+  "current_offering_id" : "default",
+  "offerings" : [
+    {
+      "description" : "standard set of packages",
+      "has_paywall_components" : true,
+      "identifier" : "default",
+      "metadata" : {
+        "meta" : "data"
+      },
+      "packages" : [
+        {
+          "identifier" : "$rc_monthly",
+          "platform_product_identifier" : "com.revenuecat.monthly_4.99.1_week_intro"
+        },
+        {
+          "identifier" : "$rc_annual",
+          "platform_product_identifier" : "com.revenuecat.annual_39.99.2_week_intro"
+        },
+        {
+          "identifier" : "$rc_weekly",
+          "platform_product_identifier" : "com.revenuecat.weekly_1.99.3_day_intro"
+        },
+        {
+          "identifier" : "$rc_lifetime",
+          "platform_product_identifier" : "lifetime"
+        },
+        {
+          "identifier" : "non_renewing",
+          "platform_product_identifier" : "non_renewing_subscription"
+        }
+      ],
+      "paywall" : null
+    },
+    {
+      "description" : "Coins",
+      "has_paywall_components" : false,
+      "identifier" : "coins",
+      "metadata" : {
+
+      },
+      "packages" : [
+        {
+          "identifier" : "10.coins",
+          "platform_product_identifier" : "consumable.10_coins"
+        }
+      ],
+      "paywall" : null
+    },
+    {
+      "description" : "Alternate offering",
+      "has_paywall_components" : false,
+      "identifier" : "alternate_offering",
+      "metadata" : {
+
+      },
+      "packages" : [
+        {
+          "identifier" : "$rc_lifetime",
+          "platform_product_identifier" : "lifetime"
+        },
+        {
+          "identifier" : "$rc_annual",
+          "platform_product_identifier" : "com.revenuecat.annual_39.99.2_week_intro"
+        },
+        {
+          "identifier" : "$rc_monthly",
+          "platform_product_identifier" : "com.revenuecat.monthly_4.99.1_week_intro"
+        }
+      ],
+      "paywall" : {
+        "asset_base_url" : "https://assets.pawwalls.com",
+        "config" : {
+          "blurred_background_image" : false,
+          "colors" : {
+            "dark" : {
+              "accent1" : "#000000",
+              "accent2" : "#FFFFFF",
+              "background" : "#000000",
+              "call_to_action_background" : "#0E79B2",
+              "call_to_action_foreground" : "#FFFFFF",
+              "text1" : "#FFFFFF"
+            },
+            "light" : {
+              "accent1" : "#FFFFFF",
+              "accent2" : "#000000",
+              "background" : "#FFFFFF",
+              "call_to_action_background" : "#0E79B2",
+              "call_to_action_foreground" : "#FFFFFF",
+              "text1" : "#000000"
+            }
+          },
+          "colors_by_tier" : {
+
+          },
+          "default_package" : "$rc_annual",
+          "display_restore_purchases" : true,
+          "images" : {
+            "background" : null,
+            "header" : null,
+            "icon" : "300883_1761569413.png"
+          },
+          "images_by_tier" : {
+
+          },
+          "images_heic" : {
+            "background" : null,
+            "header" : null,
+            "icon" : "300883_1761569413.heic"
+          },
+          "packages" : [
+            "$rc_lifetime",
+            "$rc_annual",
+            "$rc_monthly"
+          ],
+          "privacy_url" : "https://revenuecat.com/privacy",
+          "tiers" : [
+
+          ],
+          "tos_url" : "https://revenuecat.com/tos"
+        },
+        "default_locale" : "en_US",
+        "id" : "pw15d37fb3b9f54470",
+        "localized_strings" : {
+          "en_US" : {
+            "call_to_action" : "Continue",
+            "call_to_action_with_intro_offer" : null,
+            "features" : [
+
+            ],
+            "offer_details" : "{{ total_price_and_per_month }}",
+            "offer_details_with_intro_offer" : null,
+            "offer_name" : "{{ sub_period }}",
+            "offer_overrides" : {
+
+            },
+            "subtitle" : "Subtitle",
+            "tier_name" : null,
+            "title" : "Test StoreKit backend integration tests"
+          }
+        },
+        "localized_strings_by_tier" : {
+
+        },
+        "revision" : 2,
+        "template_name" : "2",
+        "zero_decimal_place_countries" : {
+          "apple" : [
+            "TWN",
+            "KAZ",
+            "MEX",
+            "PHL",
+            "THA",
+            "IND"
+          ]
+        }
+      }
+    }
+  ],
+  "placements" : {
+    "fallback_offering_id" : "default",
+    "offering_ids_by_placement" : {
+
+    }
+  },
+  "ui_config" : {
+    "app" : {
+      "colors" : {
+
+      },
+      "fonts" : {
+
+      }
+    },
+    "custom_variables" : {
+
+    },
+    "localizations" : {
+      "en_US" : {
+        "annual" : "annual",
+        "annual_short" : "yr",
+        "annually" : "annually",
+        "daily" : "daily",
+        "day" : "day",
+        "day_short" : "day",
+        "free_price" : "free",
+        "month" : "month",
+        "month_short" : "mo",
+        "monthly" : "monthly",
+        "num_day_few" : "%d days",
+        "num_day_many" : "%d days",
+        "num_day_one" : "%d day",
+        "num_day_other" : "%d days",
+        "num_day_two" : "%d days",
+        "num_day_zero" : "%d day",
+        "num_days_short" : "%dd",
+        "num_month_few" : "%d months",
+        "num_month_many" : "%d months",
+        "num_month_one" : "%d month",
+        "num_month_other" : "%d months",
+        "num_month_two" : "%d months",
+        "num_month_zero" : "%d month",
+        "num_months_short" : "%dmo",
+        "num_week_few" : "%d weeks",
+        "num_week_many" : "%d weeks",
+        "num_week_one" : "%d week",
+        "num_week_other" : "%d weeks",
+        "num_week_two" : "%d weeks",
+        "num_week_zero" : "%d week",
+        "num_weeks_short" : "%dwk",
+        "num_year_few" : "%d years",
+        "num_year_many" : "%d years",
+        "num_year_one" : "%d year",
+        "num_year_other" : "%d years",
+        "num_year_two" : "%d years",
+        "num_year_zero" : "%d year",
+        "num_years_short" : "%dyr",
+        "percent" : "%d%%",
+        "week" : "week",
+        "week_short" : "wk",
+        "weekly" : "weekly",
+        "year" : "year",
+        "year_short" : "yr",
+        "yearly" : "yearly"
+      }
+    },
+    "variable_config" : {
+      "function_compatibility_map" : {
+
+      },
+      "variable_compatibility_map" : {
+
+      }
+    }
+  }
+}

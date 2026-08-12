@@ -1,0 +1,435 @@
+import Nimble
+@_spi(Internal) @testable import RevenueCat
+import XCTest
+
+#if !os(tvOS) // For Paywalls V2
+
+class ButtonComponentCodableTests: TestCase {
+
+    let jsonStringDefaultStack = """
+    {
+        "type": "stack",
+        "dimension": {
+            "type": "vertical",
+            "alignment": "center",
+            "distribution": "start"
+        },
+        "size": {
+            "width": { "type": "fill" },
+            "height": { "type": "fill" }
+        },
+        "padding": {
+            "top": 0,
+            "bottom": 0,
+            "leading": 0,
+            "trailing": 0
+        },
+        "margin": {
+            "top": 0,
+            "bottom": 0,
+            "leading": 0,
+            "trailing": 0
+        },
+        "components": []
+    }
+    """
+
+    lazy var buttonWithTransition = """
+        {
+            "type": "button",
+            "action": {
+                "type": "restore_purchases"
+            },
+            "stack": \(jsonStringDefaultStack),
+            "transition": {
+                "animation": {
+                    "ms_delay": 1500,
+                    "ms_duration": 1500,
+                    "type": "ease_in_out"
+                },
+                "displacement_strategy": "greedy",
+                "type": "fade_and_scale"
+            }
+        }
+    """
+
+    func test_buttonWithTransition() throws {
+        let jsonData = buttonWithTransition.data(using: .utf8).unsafelyUnwrapped
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        XCTAssertNotNil(decodedButton.transition)
+
+    }
+
+    func testRestorePurchasesDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "restore_purchases"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .restorePurchases,
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testNavigateBackDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_back"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .navigateBack,
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testNavigateToCustomerCenterDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "customer_center"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .navigateTo(destination: .customerCenter),
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testNavigateToTermsDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "terms",
+                "url": {
+                    "url_lid": "re45",
+                    "method": "in_app_browser"
+                }
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .navigateTo(
+                destination: .terms(urlLid: "re45",
+                                    method: .inAppBrowser)
+            ),
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testNavigateToPrivacyPolicyDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "privacy_policy",
+                "url": {
+                    "url_lid": "re45",
+                    "method": "external_browser"
+                }
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .navigateTo(
+                destination: .privacyPolicy(urlLid: "re45",
+                                            method: .externalBrowser)
+            ),
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testNavigateToURLDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "url",
+                "url": {
+                    "url_lid": "re45",
+                    "method": "deep_link"
+                }
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .navigateTo(
+                destination: .url(urlLid: "re45",
+                                  method: .deepLink)
+            ),
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testWorkflowTriggerDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "workflow"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        let buttonComponent = PaywallComponent.ButtonComponent(
+            action: .workflowTrigger,
+            stack: .init(
+                components: [],
+                dimension: .vertical(.center, .start),
+                size: .init(width: .fill, height: .fill)
+            )
+        )
+
+        XCTAssertEqual(decodedButton, buttonComponent)
+    }
+
+    func testCloseWorkflowDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "close_workflow"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        XCTAssertEqual(decodedButton.action, .navigateBack)
+        XCTAssertTrue(decodedButton.isCloseWorkflowAction)
+    }
+
+    func testCloseWorkflowRoundTripsThroughEncoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "close_workflow"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let original = try JSONDecoder.default.decode(
+            PaywallComponent.ButtonComponent.self,
+            from: jsonString.data(using: .utf8)!
+        )
+
+        let encoded = try JSONEncoder.default.encode(original)
+        let decoded = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: encoded)
+
+        XCTAssertEqual(decoded.action, .navigateBack)
+        XCTAssertTrue(decoded.isCloseWorkflowAction)
+    }
+
+    func testCloseWorkflowAndNavigateBackButtonsAreNotEqual() throws {
+        let closeWorkflowJSON = """
+        {
+            "type": "button",
+            "action": { "type": "close_workflow" },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let navigateBackJSON = """
+        {
+            "type": "button",
+            "action": { "type": "navigate_back" },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+
+        let closeWorkflow = try JSONDecoder.default.decode(
+            PaywallComponent.ButtonComponent.self,
+            from: closeWorkflowJSON.data(using: .utf8)!
+        )
+        let navigateBack = try JSONDecoder.default.decode(
+            PaywallComponent.ButtonComponent.self,
+            from: navigateBackJSON.data(using: .utf8)!
+        )
+
+        // Both decode to the same public .action value, but isCloseWorkflowAction distinguishes them.
+        XCTAssertEqual(closeWorkflow.action, navigateBack.action)
+        XCTAssertTrue(closeWorkflow.isCloseWorkflowAction)
+        XCTAssertFalse(navigateBack.isCloseWorkflowAction)
+
+        // Equatable must treat them as distinct.
+        XCTAssertNotEqual(closeWorkflow, navigateBack)
+    }
+
+    func testNavigateToSheetWithInlineSheetDecoding() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "sheet",
+                "sheet": {
+                    "id": "sheet-1",
+                    "background_blur": false,
+                    "stack": \(jsonStringDefaultStack)
+                }
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        guard case .navigateTo(.sheet(let sheet)) = decodedButton.action else {
+            return XCTFail("Expected a .navigateTo(.sheet) action, got \(decodedButton.action)")
+        }
+        XCTAssertEqual(sheet?.id, "sheet-1")
+    }
+
+    func testNavigateToSheetWithoutInlineSheetDecodesToSheetWithNilContent() throws {
+        // A "sheet" destination without its inline sheet must decode (not throw), so the button renders.
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "sheet"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        XCTAssertEqual(decodedButton.action, .navigateTo(destination: .sheet(sheet: nil)))
+    }
+
+    func testNavigateToSheetWithNullInlineSheetDecodesToSheetWithNilContent() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "action": {
+                "type": "navigate_to",
+                "destination": "sheet",
+                "sheet": null
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        XCTAssertEqual(decodedButton.action, .navigateTo(destination: .sheet(sheet: nil)))
+    }
+
+    func testDecodesNameIgnoresExtraIdInJSON() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "id": "mUr08cu4AC",
+            "name": "View-All-Plans-Button",
+            "action": {
+                "type": "restore_purchases"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        expect(decodedButton.name) == "View-All-Plans-Button"
+    }
+
+    func testComponentNameIsNilWhenNameAbsent() throws {
+        let jsonString = """
+        {
+            "type": "button",
+            "id": "mUr08cu4AC",
+            "action": {
+                "type": "restore_purchases"
+            },
+            "stack": \(jsonStringDefaultStack)
+        }
+        """
+        let jsonData = jsonString.data(using: .utf8)!
+        let decodedButton = try JSONDecoder.default.decode(PaywallComponent.ButtonComponent.self, from: jsonData)
+
+        expect(decodedButton.name).to(beNil())
+    }
+
+}
+
+#endif

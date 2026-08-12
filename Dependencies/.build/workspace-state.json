@@ -1,0 +1,486 @@
+{
+  "object" : {
+    "artifacts" : [
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "abseil-cpp-binary",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/abseil-cpp-binary.git",
+          "name" : "abseil"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/abseil-cpp-binary/absl/absl.xcframework",
+        "source" : {
+          "checksum" : "72d4a03d002a063c6c99e04d9c0310ca830dfb9f39deb9a74ba689d6c1d89ac9",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/bin/abseil/1.2024072200.0/rc0/absl.zip"
+        },
+        "targetName" : "absl"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "airbnb.lottie-spm",
+          "kind" : "registry",
+          "location" : "airbnb.lottie-spm",
+          "name" : "airbnb.lottie-spm"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/airbnb.lottie-spm/Lottie/Lottie.xcframework",
+        "source" : {
+          "checksum" : "03d3f3b085da9479bcab7b0ad4b6d75a88425d27bf3c7582698fddce14c9181f",
+          "type" : "remote",
+          "url" : "https://github.com/airbnb/lottie-ios/releases/download/4.6.1/Lottie.xcframework.zip"
+        },
+        "targetName" : "Lottie"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "firebase.firebase-ios-sdk",
+          "kind" : "registry",
+          "location" : "firebase.firebase-ios-sdk",
+          "name" : "firebase.firebase-ios-sdk"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/firebase.firebase-ios-sdk/FirebaseAnalytics/FirebaseAnalytics.xcframework",
+        "source" : {
+          "checksum" : "e9d8457c05640706c5e80f81e46235bf929d55321a127802f8dd7a3c7a98aebb",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/swiftpm/12.17.0/FirebaseAnalytics.zip"
+        },
+        "targetName" : "FirebaseAnalytics"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "firebase.firebase-ios-sdk",
+          "kind" : "registry",
+          "location" : "firebase.firebase-ios-sdk",
+          "name" : "firebase.firebase-ios-sdk"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/firebase.firebase-ios-sdk/FirebaseFirestoreInternal/FirebaseFirestoreInternal.xcframework",
+        "source" : {
+          "checksum" : "26a8f4b5b2b454b2caf002296da08d71f241628ec27e1610b5b5a8fd5c61feb5",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/bin/firestore/12.17.0/rc0/FirebaseFirestoreInternal.zip"
+        },
+        "targetName" : "FirebaseFirestoreInternal"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "google-ads-on-device-conversion-ios-sdk",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/googleads/google-ads-on-device-conversion-ios-sdk",
+          "name" : "GoogleAdsOnDeviceConversion"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/google-ads-on-device-conversion-ios-sdk/GoogleAdsOnDeviceConversion/GoogleAdsOnDeviceConversion.xcframework",
+        "source" : {
+          "checksum" : "1c67ea0dbf6cd033a4c2a736301922ac44f26166f1eeae74bc7f30d55641cf55",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/appads/3.6.0/GoogleAdsOnDeviceConversion.zip"
+        },
+        "targetName" : "GoogleAdsOnDeviceConversion"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "googleappmeasurement",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleAppMeasurement.git",
+          "name" : "GoogleAppMeasurement"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/googleappmeasurement/GoogleAppMeasurementIdentitySupport/GoogleAppMeasurementIdentitySupport.xcframework",
+        "source" : {
+          "checksum" : "bfe69866256abe0667616fc764d36f4aa963272815bf5168971b38bb6bbcacb2",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/swiftpm/12.17.0/GoogleAppMeasurementIdentitySupport.zip"
+        },
+        "targetName" : "GoogleAppMeasurementIdentitySupport"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "googleappmeasurement",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleAppMeasurement.git",
+          "name" : "GoogleAppMeasurement"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/googleappmeasurement/GoogleAppMeasurement/GoogleAppMeasurement.xcframework",
+        "source" : {
+          "checksum" : "5bf58d72ecbb6a84e0a64f8557c4488f7812c1742d409eb712033bc7edc95992",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/swiftpm/12.17.0/GoogleAppMeasurement.zip"
+        },
+        "targetName" : "GoogleAppMeasurement"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "grpc-binary",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/grpc-binary.git",
+          "name" : "gRPC"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/grpc-binary/grpcpp/grpcpp.xcframework",
+        "source" : {
+          "checksum" : "c965a70fc06c1323d631d909168ba801fb783df964e3625ca922250dd625b197",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/bin/grpc/1.69.1/rc0/grpcpp.zip"
+        },
+        "targetName" : "grpcpp"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "grpc-binary",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/grpc-binary.git",
+          "name" : "gRPC"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/grpc-binary/grpc/grpc.xcframework",
+        "source" : {
+          "checksum" : "61bb6e29798cdc6898d7fcdf2d6a5e5191524dea4ece59d582329a1a56ebbfb3",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/bin/grpc/1.69.1/rc0/grpc.zip"
+        },
+        "targetName" : "grpc"
+      },
+      {
+        "kind" : {
+          "xcframework" : {
+
+          }
+        },
+        "packageRef" : {
+          "identity" : "grpc-binary",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/grpc-binary.git",
+          "name" : "gRPC"
+        },
+        "path" : "/Users/burak/Desktop/Appcircle/dev/appcircle-sample-ios/Dependencies/.build/artifacts/grpc-binary/openssl_grpc/openssl_grpc.xcframework",
+        "source" : {
+          "checksum" : "52494719d0dda77fa9a65c62207f22814c7799d522b4ae73d1244dbe61cf2b89",
+          "type" : "remote",
+          "url" : "https://dl.google.com/firebase/ios/bin/grpc/1.69.1/rc0/openssl_grpc.zip"
+        },
+        "targetName" : "openssl_grpc"
+      }
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "RevenueCat.purchases-ios-spm",
+          "kind" : "registry",
+          "location" : "RevenueCat.purchases-ios-spm",
+          "name" : "RevenueCat.purchases-ios-spm"
+        },
+        "state" : {
+          "name" : "registryDownload",
+          "version" : "5.83.1"
+        },
+        "subpath" : "RevenueCat/purchases-ios-spm/5.83.1"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "abseil-cpp-binary",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/abseil-cpp-binary.git",
+          "name" : "abseil"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "bbe8b69694d7873315fd3a4ad41efe043e1c07c5",
+            "version" : "1.2024072200.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "abseil-cpp-binary"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "airbnb.lottie-spm",
+          "kind" : "registry",
+          "location" : "airbnb.lottie-spm",
+          "name" : "airbnb.lottie-spm"
+        },
+        "state" : {
+          "name" : "registryDownload",
+          "version" : "4.6.1"
+        },
+        "subpath" : "airbnb/lottie-spm/4.6.1"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "app-check",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/app-check.git",
+          "name" : "AppCheck"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "3e33dd27dd4c69bd81c7c81fe61d8ccf58846902",
+            "version" : "11.3.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "app-check"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "evgenyneu.keychain-swift",
+          "kind" : "registry",
+          "location" : "evgenyneu.keychain-swift",
+          "name" : "evgenyneu.keychain-swift"
+        },
+        "state" : {
+          "name" : "registryDownload",
+          "version" : "24.0.0"
+        },
+        "subpath" : "evgenyneu/keychain-swift/24.0.0"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "firebase.firebase-ios-sdk",
+          "kind" : "registry",
+          "location" : "firebase.firebase-ios-sdk",
+          "name" : "firebase.firebase-ios-sdk"
+        },
+        "state" : {
+          "name" : "registryDownload",
+          "version" : "12.17.0"
+        },
+        "subpath" : "firebase/firebase-ios-sdk/12.17.0"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "google-ads-on-device-conversion-ios-sdk",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/googleads/google-ads-on-device-conversion-ios-sdk",
+          "name" : "GoogleAdsOnDeviceConversion"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "dc39082d8881109d35b94b1c122164c0e8d08a55",
+            "version" : "3.6.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "google-ads-on-device-conversion-ios-sdk"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "googleappmeasurement",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleAppMeasurement.git",
+          "name" : "GoogleAppMeasurement"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "fceaffa07d22dcd5624d3639fd970351a4a5ad8c",
+            "version" : "12.17.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "GoogleAppMeasurement"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "googledatatransport",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleDataTransport.git",
+          "name" : "GoogleDataTransport"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "ba3358d3c3dbae8ef230b58a46b97ad65e84e974",
+            "version" : "10.1.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "GoogleDataTransport"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "googleutilities",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/GoogleUtilities.git",
+          "name" : "GoogleUtilities"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "9f183ae842be978784f2963a343682e0c46d8fb3",
+            "version" : "8.1.2"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "GoogleUtilities"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "grpc-binary",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/grpc-binary.git",
+          "name" : "gRPC"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "75b31c842f664a0f46a2e590a570e370249fd8f6",
+            "version" : "1.69.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "grpc-binary"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "gtm-session-fetcher",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/gtm-session-fetcher.git",
+          "name" : "GTMSessionFetcher"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "724a52eea6329b7e12d3ad8300d76ca9f3895fcc",
+            "version" : "5.3.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "gtm-session-fetcher"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "interop-ios-for-google-sdks",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/interop-ios-for-google-sdks.git",
+          "name" : "InteropForGoogle"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "040d087ac2267d2ddd4cca36c757d1c6a05fdbfe",
+            "version" : "101.0.0"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "interop-ios-for-google-sdks"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "leveldb",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/firebase/leveldb.git",
+          "name" : "leveldb"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "a0bc79961d7be727d258d33d5a6b2f1023270ba1",
+            "version" : "1.22.5"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "leveldb"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "lzell.AIProxySwift",
+          "kind" : "registry",
+          "location" : "lzell.AIProxySwift",
+          "name" : "lzell.AIProxySwift"
+        },
+        "state" : {
+          "name" : "registryDownload",
+          "version" : "0.155.0"
+        },
+        "subpath" : "lzell/AIProxySwift/0.155.0"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "nanopb",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/firebase/nanopb.git",
+          "name" : "nanopb"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "3851d94a41890dea16dc3db34caf60e585cb4163",
+            "version" : "2.30910.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "nanopb"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "promises",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/google/promises.git",
+          "name" : "Promises"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "f4a19a3c313dc2616c70bb49d29a799fb16be837",
+            "version" : "2.4.1"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "promises"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

@@ -1,0 +1,17 @@
+use_frameworks!
+
+source 'https://github.com/firebase/SpecsDev.git'
+source 'https://github.com/firebase/SpecsStaging.git'
+source 'https://cdn.cocoapods.org/'
+
+pod 'FirebaseAnalytics'
+pod 'FirebaseCore', :path => '../../../..'
+pod 'FirebaseInstallations', :path => '../../../..'
+pod 'FirebaseABTesting', :path => '../../../..'
+
+target 'InAppMessaging_Example_iOS' do
+  platform :ios, '15.0'
+
+  pod 'FirebaseInAppMessaging', :path => '../../../..'
+
+end

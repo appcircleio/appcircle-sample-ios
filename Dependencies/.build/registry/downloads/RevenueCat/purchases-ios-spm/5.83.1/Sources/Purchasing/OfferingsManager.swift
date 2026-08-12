@@ -1,0 +1,897 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  OfferingsManager.swift
+//
+//  Created by Juanpe Catalán on 8/8/21.
+
+import Foundation
+import StoreKit
+
+// swiftlint:disable file_length
+
+class OfferingsManager {
+
+    private let deviceCache: DeviceCache
+    private let operationDispatcher: OperationDispatcher
+    private let systemInfo: SystemInfo
+    private let backend: Backend
+    private let offeringsFactory: OfferingsFactory
+    private let productsManager: ProductsManagerType
+    private let diagnosticsTracker: DiagnosticsTrackerType?
+    private let dateProvider: DateProvider
+    // Nil when remote config is disabled, in which case offerings delivery is unchanged.
+    private let remoteConfigManager: RemoteConfigManagerType?
+    private let uiConfigProvider: UiConfigProvider?
+    private let workflowAssetPrewarmer: WorkflowAssetPrewarmingType?
+    private let offeringsCacheGeneration = Atomic(0)
+
+    init(deviceCache: DeviceCache,
+         operationDispatcher: OperationDispatcher,
+         systemInfo: SystemInfo,
+         backend: Backend,
+         offeringsFactory: OfferingsFactory,
+         productsManager: ProductsManagerType,
+         diagnosticsTracker: DiagnosticsTrackerType?,
+         dateProvider: DateProvider = DateProvider(),
+         remoteConfigManager: RemoteConfigManagerType? = nil,
+         uiConfigProvider: UiConfigProvider? = nil,
+         workflowAssetPrewarmer: WorkflowAssetPrewarmingType? = nil) {
+        self.deviceCache = deviceCache
+        self.operationDispatcher = operationDispatcher
+        self.systemInfo = systemInfo
+        self.backend = backend
+        self.offeringsFactory = offeringsFactory
+        self.productsManager = productsManager
+        self.diagnosticsTracker = diagnosticsTracker
+        self.dateProvider = dateProvider
+        self.remoteConfigManager = remoteConfigManager
+        self.uiConfigProvider = uiConfigProvider
+        self.workflowAssetPrewarmer = workflowAssetPrewarmer
+    }
+
+    func offerings(
+        appUserID: String,
+        fetchPolicy: FetchPolicy = .default,
+        fetchCurrent: Bool = false,
+        trackDiagnostics: Bool = true,
+        completion: (@MainActor @Sendable (Result<Offerings, Error>) -> Void)?
+    ) {
+        self.trackGetOfferingsStartedIfNeeded(trackDiagnostics: trackDiagnostics)
+        let startTime = self.dateProvider.now()
+
+        self.systemInfo.isApplicationBackgrounded { isAppBackgrounded in
+            let trackingContext = OfferingsTrackingContext(trackDiagnostics: trackDiagnostics,
+                                                           startTime: startTime)
+
+            guard !fetchCurrent && !self.systemInfo.dangerousSettings.uiPreviewMode else {
+                self.fetchFromNetworkAndTrackResult(appUserID: appUserID,
+                                                    fetchPolicy: fetchPolicy,
+                                                    trackingContext: trackingContext,
+                                                    cacheStatus: .notChecked,
+                                                    completion: completion)
+                return
+            }
+
+            guard let memoryCachedOfferings = self.cachedOfferings else {
+                self.fetchFromNetworkAndTrackResult(appUserID: appUserID,
+                                                    fetchPolicy: fetchPolicy,
+                                                    trackingContext: trackingContext,
+                                                    cacheStatus: .notFound,
+                                                    completion: completion)
+                return
+            }
+
+            guard !self.shouldRefreshOfferingsWithPrunedComponents(memoryCachedOfferings) else {
+                self.fetchFromNetworkAndTrackResult(appUserID: appUserID,
+                                                    fetchPolicy: fetchPolicy,
+                                                    trackingContext: trackingContext,
+                                                    cacheStatus: .stale,
+                                                    completion: completion)
+                return
+            }
+
+            let cacheStatus = self.deviceCache.offeringsCacheStatus(isAppBackgrounded: isAppBackgrounded)
+            Logger.debug(Strings.offering.vending_offerings_cache_from_memory)
+            if cacheStatus == .stale {
+                // Refresh in the background; the readiness gate below must not delay it.
+                self.updateOfferingsCache(appUserID: appUserID,
+                                          isAppBackgrounded: isAppBackgrounded,
+                                          fetchPolicy: fetchPolicy,
+                                          completion: nil)
+            }
+            // Cached offerings, stale ones included, wait for config readiness before
+            // delivery (a no-op once config has synced). A stale snapshot may be returned
+            // even if the background refresh finished first; that matches the stale-cache
+            // model, and the refresh still updates the cache for the next call.
+            self.deliverCachedOfferingsWhenConfigReady(appUserID: appUserID,
+                                                       offerings: memoryCachedOfferings,
+                                                       fetchPolicy: fetchPolicy,
+                                                       trackingContext: trackingContext,
+                                                       cacheStatus: cacheStatus,
+                                                       completion: completion)
+        }
+    }
+
+    var cachedOfferings: Offerings? {
+        return self.deviceCache.cachedOfferings
+    }
+
+    func updateOfferingsCache(
+        appUserID: String,
+        isAppBackgrounded: Bool,
+        fetchPolicy: FetchPolicy = .default,
+        completion: (@MainActor @Sendable (Result<OfferingsResultData, Error>) -> Void)?
+    ) {
+        // We keep track of preferred locales at the time of launching the request
+        let preferredLocales = systemInfo.preferredLocales
+        // Snapshot the generation before the mode. If remote config disables between these reads,
+        // the request is conservatively treated as stale instead of allowing a pruned response into
+        // the new generation.
+        let cacheGeneration = self.offeringsCacheGeneration.value
+        let decodingMode = self.offeringsResponseDecodingMode
+        self.backend.offerings.getOfferings(
+            appUserID: appUserID,
+            isAppBackgrounded: isAppBackgrounded,
+            decodingMode: decodingMode
+        ) { result in
+            switch result {
+            case let .success(fetchResult):
+                self.handleOfferingsBackendResult(with: fetchResult,
+                                                  appUserID: appUserID,
+                                                  isAppBackgrounded: isAppBackgrounded,
+                                                  fetchPolicy: fetchPolicy,
+                                                  preferredLocales: preferredLocales,
+                                                  cacheGeneration: cacheGeneration,
+                                                  completion: completion)
+
+            case let .failure(backendError) where backendError.shouldFallBackToCache:
+
+                // If error fetching offerings, attempt to load them from disk cache.
+                self.fetchCachedOfferingsFromDisk(appUserID: appUserID,
+                                                  fetchPolicy: fetchPolicy) { offerings in
+                    if let offerings = offerings {
+                        Logger.warn(Strings.offering.error_fetching_offerings_using_disk_cache)
+                        // Deliver via the config-ready gate too, so an offerings backend failure that
+                        // falls back to disk still waits for remote config's first sync instead of
+                        // leaving workflow resolution unresolved.
+                        self.deliverWhenConfigReady(
+                            offerings: offerings.offerings,
+                            refreshIfNeeded: {
+                                self.fetchFromNetwork(appUserID: appUserID,
+                                                      fetchPolicy: fetchPolicy,
+                                                      completion: completion)
+                            },
+                            deliver: {
+                                self.dispatchCompletionOnMainThreadIfPossible(completion, value: .success(offerings))
+                            }
+                        )
+                    } else {
+                        self.handleOfferingsUpdateError(.backendError(backendError),
+                                                        completion: completion)
+                    }
+                }
+
+            case let .failure(error):
+                self.handleOfferingsUpdateError(.backendError(error), completion: completion)
+            }
+        }
+    }
+
+    func getMissingProductIDs(productIDsFromStore: Set<String>,
+                              productIDsFromBackend: Set<String>) -> Set<String> {
+        guard !productIDsFromBackend.isEmpty else {
+            return []
+        }
+
+        return productIDsFromBackend.subtracting(productIDsFromStore)
+    }
+
+    func clearInMemoryOfferingsCache() {
+        self.deviceCache.clearInMemoryOfferingsCache()
+    }
+
+    func invalidateCachedOfferings(appUserID: String) {
+        self.deviceCache.clearOfferingsCache(appUserID: appUserID)
+    }
+
+    func invalidateAndReFetchCachedOfferingsIfAppropiate(appUserID: String) {
+        let cachedOfferings = self.deviceCache.cachedOfferings
+        self.invalidateCachedOfferings(appUserID: appUserID)
+
+        if cachedOfferings != nil {
+            self.offerings(appUserID: appUserID,
+                           fetchPolicy: .ignoreNotFoundProducts,
+                           trackDiagnostics: false) { @Sendable _ in }
+        }
+    }
+
+    func refreshCachedOfferingsForRemoteConfigDisable(appUserID: String) {
+        self.offeringsCacheGeneration.modify { $0 += 1 }
+        let cachedOfferings = self.deviceCache.cachedOfferings
+
+        // Preserve the full response on disk so it can provide legacy paywall components if the network fails.
+        self.clearInMemoryOfferingsCache()
+
+        if cachedOfferings != nil {
+            self.offerings(appUserID: appUserID,
+                           fetchPolicy: .ignoreNotFoundProducts,
+                           trackDiagnostics: false) { @Sendable _ in }
+        }
+    }
+
+}
+
+private extension OfferingsManager {
+
+    func fetchFromNetwork(
+        appUserID: String,
+        fetchPolicy: FetchPolicy = .default,
+        completion: (@MainActor @Sendable (Result<OfferingsResultData, Error>) -> Void)?
+    ) {
+        Logger.debug(Strings.offering.no_cached_offerings_fetching_from_network)
+
+        self.systemInfo.isApplicationBackgrounded { isAppBackgrounded in
+            self.updateOfferingsCache(appUserID: appUserID,
+                                      isAppBackgrounded: isAppBackgrounded,
+                                      fetchPolicy: fetchPolicy,
+                                      completion: completion)
+        }
+    }
+
+    func fetchFromNetworkAndTrackResult(
+        appUserID: String,
+        fetchPolicy: FetchPolicy,
+        trackingContext: OfferingsTrackingContext,
+        cacheStatus: CacheStatus,
+        completion: (@MainActor @Sendable (Result<Offerings, Error>) -> Void)?
+    ) {
+        self.fetchFromNetwork(appUserID: appUserID,
+                              fetchPolicy: fetchPolicy) { [weak self] result in
+            self?.trackGetOfferingsResultIfNeeded(trackDiagnostics: trackingContext.trackDiagnostics,
+                                                  startTime: trackingContext.startTime,
+                                                  cacheStatus: cacheStatus,
+                                                  error: result.error,
+                                                  requestedProductIds: result.value?.requestedProductIds,
+                                                  notFoundProductIds: result.value?.notFoundProductIds)
+            completion?(result.map(\.offerings))
+        }
+    }
+
+    func fetchCachedOfferingsFromDisk(
+        appUserID: String,
+        fetchPolicy: FetchPolicy,
+        completion: (@escaping @Sendable (OfferingsResultData?) -> Void)
+    ) {
+        guard let contents = self.deviceCache.cachedOfferingsContents(
+            appUserID: appUserID,
+            decodingMode: self.offeringsResponseDecodingMode
+        ) else {
+            completion(nil)
+            return
+        }
+
+        // A workflows-mode response intentionally omits legacy component bodies. Once remote config disables,
+        // that disk entry cannot provide the backwards-compatible paywall, so require a full network response
+        // instead of repeatedly rebuilding and rejecting the same pruned offering.
+        guard !self.shouldRejectPrunedDiskContents(contents) else {
+            completion(nil)
+            return
+        }
+
+        self.createOfferings(
+            from: contents,
+            loadedFromDiskCache: true,
+            fetchPolicy: fetchPolicy,
+            completion: { [cache = self.deviceCache] result in
+                switch result {
+                case let .success(offeringsResultData):
+                    Logger.debug(Strings.offering.vending_offerings_cache_from_disk)
+
+                    // Cache in memory but as stale, so it can be re-updated when possible
+                    cache.cacheInMemory(offerings: offeringsResultData.offerings)
+                    cache.forceOfferingsCacheStale()
+
+                    completion(offeringsResultData)
+
+                case .failure:
+                    completion(nil)
+                }
+            }
+        )
+    }
+
+    func createOfferings(
+        from contents: Offerings.Contents,
+        loadedFromDiskCache: Bool,
+        fetchPolicy: FetchPolicy,
+        completion: @escaping (@Sendable (Result<OfferingsResultData, Error>) -> Void)
+    ) {
+        let productIdentifiers = contents.response.productIdentifiers
+
+        guard !productIdentifiers.isEmpty else {
+            let errorMessage = Strings.offering.configuration_error_no_products_for_offering(
+                apiKeyValidationResult: self.systemInfo.apiKeyValidationResult
+            ).description
+            completion(.failure(.configurationError(errorMessage, underlyingError: nil)))
+            return
+        }
+
+        self.fetchProducts(withIdentifiers: productIdentifiers, fromResponse: contents.response) { result in
+            let products = result.value ?? []
+            let apiKeyValidationResult = self.systemInfo.apiKeyValidationResult
+
+            guard products.isEmpty == false else {
+                // Check if empty products is likely caused by https://github.com/RevenueCat/purchases-ios/issues/4954
+                // There is a widely reported bug in the iOS 18.4 Simulator affecting some HTTP requests
+                let showSimulatorWarning = self.systemInfo.isSubjectToKnownIssue_18_4_sim()
+                completion(.failure(Self.createErrorForEmptyResult(result.error,
+                                                                   showSimulatorWarning: showSimulatorWarning,
+                                                                   apiKeyValidationResult: apiKeyValidationResult)))
+                return
+            }
+
+            let productsByID = products.dictionaryWithKeys { $0.id }
+
+            let missingProductIDs = self.getMissingProductIDs(productIDsFromStore: Set(productsByID.keys),
+                                                              productIDsFromBackend: productIdentifiers)
+            if !missingProductIDs.isEmpty {
+                switch fetchPolicy {
+                case .ignoreNotFoundProducts:
+                    Logger.appleWarning(
+                        Strings.offering.cannot_find_product_configuration_error(
+                            identifiers: missingProductIDs,
+                            apiKeyValidationResult: apiKeyValidationResult)
+                    )
+
+                case .failIfProductsAreMissing:
+                    completion(.failure(.missingProducts(identifiers: missingProductIDs,
+                                                         apiKeyValidationResult: apiKeyValidationResult)))
+                    return
+                }
+            }
+
+            if let createdOfferings = self.offeringsFactory.createOfferings(
+                from: productsByID,
+                contents: contents,
+                loadedFromDiskCache: loadedFromDiskCache,
+                shouldCreatePaywallComponents: self.shouldCreatePaywallComponents
+            ) {
+                completion(.success(OfferingsResultData(offerings: createdOfferings,
+                                                        requestedProductIds: productIdentifiers,
+                                                        notFoundProductIds: missingProductIDs)))
+            } else {
+                completion(.failure(.noOfferingsFound()))
+            }
+        }
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func handleOfferingsBackendResult(
+        with fetchResult: OfferingsFetchResult,
+        appUserID: String,
+        isAppBackgrounded: Bool,
+        fetchPolicy: FetchPolicy,
+        preferredLocales: [String],
+        cacheGeneration: Int,
+        completion: (@MainActor @Sendable (Result<OfferingsResultData, Error>) -> Void)?
+    ) {
+        let contents = fetchResult.contents
+        self.createOfferings(from: contents, loadedFromDiskCache: false, fetchPolicy: fetchPolicy) { result in
+            switch result {
+            case let .success(offeringsResultData):
+                Logger.rcSuccess(Strings.offering.offerings_stale_updated_from_network)
+
+                let didCache = self.offeringsCacheGeneration.modify { currentGeneration in
+                    guard currentGeneration == cacheGeneration else { return false }
+
+                    self.deviceCache.cache(offerings: offeringsResultData.offerings,
+                                           fetchResult: fetchResult,
+                                           preferredLocales: preferredLocales,
+                                           appUserID: appUserID)
+                    return true
+                }
+
+                // Superseded background refreshes have nothing to deliver and must not mutate either cache.
+                guard didCache || completion != nil else { return }
+
+                // A background refresh (nil completion) only updates the cache; skip the
+                // readiness gate so it doesn't await (and decode) config for a no-op delivery.
+                guard let completion else { return }
+                // Delivers offerings only once remote config has synced at least once, so the
+                // `workflows` topic is available for resolving a workflow right after this call.
+                self.deliverWhenConfigReady(
+                    offerings: offeringsResultData.offerings,
+                    refreshIfNeeded: {
+                        self.fetchFromNetwork(appUserID: appUserID,
+                                              fetchPolicy: fetchPolicy,
+                                              completion: completion)
+                    },
+                    deliver: {
+                        self.dispatchCompletionOnMainThreadIfPossible(completion,
+                                                                      value: .success(offeringsResultData))
+                    }
+                )
+
+            case let .failure(error):
+                self.handleOfferingsUpdateError(error, completion: completion)
+            }
+        }
+    }
+
+    private static func createErrorForEmptyResult(
+        _ error: PurchasesError?,
+        showSimulatorWarning: Bool = false,
+        apiKeyValidationResult: Configuration.APIKeyValidationResult
+    ) -> OfferingsManager.Error {
+        if let purchasesError = error,
+           case ErrorCode.productRequestTimedOut = purchasesError.error {
+            return .timeout(purchasesError)
+        } else if showSimulatorWarning {
+            return .configurationError(
+                Strings.offering.known_issue_ios_18_4_simulator_products_not_found(
+                    apiKeyValidationResult: apiKeyValidationResult
+                ).description,
+                underlyingError: error?.asPublicError
+            )
+        } else {
+            return .configurationError(
+                Strings.offering.configuration_error_products_not_found(
+                    apiKeyValidationResult: apiKeyValidationResult
+                ).description,
+                underlyingError: error?.asPublicError
+            )
+        }
+    }
+
+    func handleOfferingsUpdateError(
+        _ error: Error,
+        completion: (@MainActor @Sendable (Result<OfferingsResultData, Error>) -> Void)?
+    ) {
+        Logger.appleError(Strings.offering.fetching_offerings_error(error: error,
+                                                                    underlyingError: error.underlyingError))
+        self.dispatchCompletionOnMainThreadIfPossible(completion, value: .failure(error))
+    }
+
+    func dispatchCompletionOnMainThreadIfPossible<T>(
+        _ completion: (@MainActor @Sendable (T) -> Void)?,
+        value: T
+    ) {
+        if let completion = completion {
+            self.operationDispatcher.dispatchOnMainActor {
+                completion(value)
+            }
+        }
+    }
+
+    /// Invokes `deliver` once the paywall config data `getOfferings` depends on is ready:
+    /// the `workflows` topic (with its prefetch-flagged blobs) and the `ui_config` body,
+    /// resolved concurrently. Both are best-effort (nil on failure, never throwing), so
+    /// delivery can never be stranded; when no manager is wired, `deliver` runs immediately.
+    private func deliverWhenConfigReady(
+        offerings: Offerings,
+        refreshIfNeeded: @escaping () -> Void,
+        deliver: @escaping () -> Void
+    ) {
+        guard let remoteConfigManager = self.remoteConfigManager else {
+            deliver()
+            return
+        }
+        Task {
+            let uiConfigProvider = self.uiConfigProvider ?? UiConfigProvider(manager: remoteConfigManager)
+            async let workflowBodyDataReady: Void = self.cacheWorkflowBodyDataAndScheduleAssetPrewarmingIfNeeded(
+                remoteConfigManager: remoteConfigManager,
+                includingOfferingId: offerings.current?.identifier
+            )
+            async let uiConfigReady = uiConfigProvider.getUiConfig()
+            _ = await (workflowBodyDataReady, uiConfigReady)
+
+            if self.shouldRefreshOfferingsWithPrunedComponents(offerings) {
+                refreshIfNeeded()
+            } else {
+                deliver()
+            }
+        }
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    private func deliverCachedOfferingsWhenConfigReady(
+        appUserID: String,
+        offerings: Offerings,
+        fetchPolicy: FetchPolicy,
+        trackingContext: OfferingsTrackingContext,
+        cacheStatus: CacheStatus,
+        completion: (@MainActor @Sendable (Result<Offerings, Error>) -> Void)?
+    ) {
+        self.deliverWhenConfigReady(
+            offerings: offerings,
+            refreshIfNeeded: {
+                self.fetchFromNetworkAndTrackResult(appUserID: appUserID,
+                                                    fetchPolicy: fetchPolicy,
+                                                    trackingContext: trackingContext,
+                                                    cacheStatus: .stale,
+                                                    completion: completion)
+            },
+            deliver: {
+                // Track inside the gate so the recorded latency includes the readiness wait.
+                self.trackGetOfferingsResultIfNeeded(trackDiagnostics: trackingContext.trackDiagnostics,
+                                                     startTime: trackingContext.startTime,
+                                                     cacheStatus: cacheStatus,
+                                                     error: nil,
+                                                     requestedProductIds: nil,
+                                                     notFoundProductIds: nil)
+                self.dispatchCompletionOnMainThreadIfPossible(completion, value: .success(offerings))
+            }
+        )
+    }
+
+    private func cacheWorkflowBodyDataAndScheduleAssetPrewarmingIfNeeded(
+        remoteConfigManager: RemoteConfigManagerType,
+        includingOfferingId: String?
+    ) async {
+        if let workflowAssetPrewarmer = self.workflowAssetPrewarmer {
+            await workflowAssetPrewarmer.scheduleAssetPrewarmingForPrefetchedWorkflows(
+                includingOfferingId: includingOfferingId
+            )
+        } else {
+            _ = await remoteConfigManager.awaitTopicAndPrefetchBlobsReady(.workflows)
+        }
+    }
+
+    /// Keep the offerings-provided components path when remote config is not active. When it is active,
+    /// workflows resolve paywall components from `/v1/config`, so retaining the offerings copy duplicates memory.
+    var shouldCreatePaywallComponents: Bool {
+        return self.remoteConfigManager?.isDisabled ?? true
+    }
+
+    var offeringsResponseDecodingMode: OfferingsResponse.DecodingMode {
+        return self.shouldCreatePaywallComponents ? .withPaywallComponents : .withoutPaywallComponents
+    }
+
+    /// If remote config was disabled after a workflows-enabled offerings fetch, the in-memory offering
+    /// can still carry only the lightweight paywall marker, not the renderable components payload.
+    /// Refetch so the legacy offerings paywall fallback is restored for the disabled-RC path.
+    func shouldRefreshOfferingsWithPrunedComponents(_ offerings: Offerings) -> Bool {
+        guard self.remoteConfigManager?.isDisabled == true else { return false }
+
+        return offerings.all.values.contains { offering in
+            offering.hasPaywallComponents && offering.internalPaywallComponents == nil
+        }
+    }
+
+    private func shouldRejectPrunedDiskContents(_ contents: Offerings.Contents) -> Bool {
+        guard self.remoteConfigManager?.isDisabled == true else { return false }
+
+        return contents.response.offerings.contains { offering in
+            offering.hasPaywallComponents == true && offering.paywallComponents == nil
+        }
+    }
+
+    private func fetchProducts(
+        withIdentifiers identifiers: Set<String>,
+        fromResponse response: OfferingsResponse,
+        completion: @escaping ProductsManagerType.Completion
+    ) {
+        if self.systemInfo.dangerousSettings.uiPreviewMode {
+            let previewProducts = self.createPreviewProducts(productIdentifiers: identifiers, fromResponse: response)
+            completion(.success(previewProducts))
+        } else {
+            self.productsManager.products(withIdentifiers: identifiers, completion: completion)
+        }
+    }
+
+    // MARK: - For UI Preview mode
+
+    /// Generates a set of dummy `StoreProduct`s with hardcoded information exclusively for UI Preview mode.
+    private func createPreviewProducts(
+        productIdentifiers: Set<String>,
+        fromResponse response: OfferingsResponse
+    ) -> Set<StoreProduct> {
+        let packagesByProductID = response.packages.dictionaryAllowingDuplicateKeys { $0.platformProductIdentifier }
+        let products = productIdentifiers.map { identifier -> StoreProduct in
+            let productType = self.inferredPreviewProductType(from: packagesByProductID[identifier],
+                                                              productIdentifier: identifier)
+
+            let introductoryDiscount: TestStoreProductDiscount? = {
+                // To allow introductory offers in UI Preview mode,
+                // all dummy yearly subscriptions have a 1-week free trial
+                guard productType.period?.unit == .year else { return nil }
+                return TestStoreProductDiscount(
+                    identifier: "intro",
+                    price: 0,
+                    localizedPriceString: "$0.00",
+                    paymentMode: .freeTrial,
+                    subscriptionPeriod: SubscriptionPeriod(value: 1, unit: .week),
+                    numberOfPeriods: 1,
+                    type: .introductory
+                )
+            }()
+
+            let testProduct = TestStoreProduct(
+                localizedTitle: "PRO \(productType.type)",
+                price: Decimal(productType.price),
+                currencyCode: "USD",
+                localizedPriceString: String(format: "$%.2f", productType.price),
+                productIdentifier: identifier,
+                productType: productType.period == nil ? .nonConsumable : .autoRenewableSubscription,
+                localizedDescription: productType.type + (productType.period == nil ? "" : " subscription"),
+                subscriptionGroupIdentifier: productType.period == nil ? nil : "group",
+                subscriptionPeriod: productType.period,
+                introductoryDiscount: introductoryDiscount,
+                discounts: [],
+                locale: Locale(identifier: "en_US")
+            )
+
+            return testProduct.toStoreProduct()
+        }
+
+        return Set(products)
+    }
+
+    private func inferredPreviewProductType(
+        from package: OfferingsResponse.Offering.Package?,
+        productIdentifier: String
+    ) -> PreviewProductType {
+        if let package,
+           let previewProductType = PreviewProductType(packageType: Package.packageType(from: package.identifier)) {
+            return previewProductType
+        } else {
+            // Try to guess basing on the product identifier
+            let id = productIdentifier.lowercased()
+
+            let packageType: PackageType
+            if id.contains("lifetime") || id.contains("forever") || id.contains("permanent") {
+                packageType = .lifetime
+            } else if id.contains("annual") || id.contains("year") {
+                packageType = .annual
+            } else if id.contains("sixmonth") || id.contains("6month") {
+                packageType = .sixMonth
+            } else if id.contains("threemonth") || id.contains("3month") || id.contains("quarter") {
+                packageType = .threeMonth
+            } else if id.contains("twomonth") || id.contains("2month") {
+                packageType = .twoMonth
+            } else if id.contains("month") {
+                packageType = .monthly
+            } else if id.contains("week") {
+                packageType = .weekly
+            } else {
+                packageType = .custom
+            }
+            return PreviewProductType(packageType: packageType) ?? .default
+        }
+    }
+
+    func trackGetOfferingsStartedIfNeeded(trackDiagnostics: Bool) {
+        if #available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *),
+            trackDiagnostics,
+           let diagnosticsTracker = self.diagnosticsTracker {
+            diagnosticsTracker.trackOfferingsStarted()
+        }
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func trackGetOfferingsResultIfNeeded(trackDiagnostics: Bool,
+                                         startTime: Date,
+                                         cacheStatus: CacheStatus,
+                                         error: Error?,
+                                         requestedProductIds: Set<String>?,
+                                         notFoundProductIds: Set<String>?) {
+        if #available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *),
+            trackDiagnostics,
+           let diagnosticsTracker = self.diagnosticsTracker {
+
+            let responseTime = self.dateProvider.now().timeIntervalSince(startTime)
+
+            diagnosticsTracker.trackOfferingsResult(requestedProductIds: requestedProductIds,
+                                                    notFoundProductIds: notFoundProductIds,
+                                                    errorMessage: error?.localizedDescription,
+                                                    errorCode: error?.asPurchasesError.errorCode,
+                                                    // WIP Add verification result property once we
+                                                    // expose verification result in offerings object
+                                                    verificationResult: nil,
+                                                    cacheStatus: cacheStatus,
+                                                    responseTime: responseTime)
+        }
+    }
+}
+
+extension OfferingsManager {
+
+    /// Determines the behavior when products in an `Offering` are not found
+    internal enum FetchPolicy {
+
+        case ignoreNotFoundProducts
+        case failIfProductsAreMissing
+
+        static let `default`: Self = .ignoreNotFoundProducts
+
+    }
+
+}
+
+// @unchecked because:
+// - Class is not `final` (it's mocked). This implicitly makes subclasses `Sendable` even if they're not thread-safe.
+extension OfferingsManager: @unchecked Sendable {}
+
+// MARK: - Errors
+
+extension OfferingsManager {
+
+    enum Error: Swift.Error {
+
+        case backendError(BackendError)
+        case configurationError(String, PublicError?, ErrorSource)
+        case timeout(PurchasesError)
+        case noOfferingsFound(ErrorSource)
+        case missingProducts(identifiers: Set<String>,
+                             apiKeyValidationResult: Configuration.APIKeyValidationResult,
+                             ErrorSource)
+
+    }
+
+}
+
+extension OfferingsManager.Error: PurchasesErrorConvertible {
+
+    var asPurchasesError: PurchasesError {
+        switch self {
+        case let .backendError(backendError):
+            return backendError.asPurchasesError
+
+        case let .timeout(underlyingError):
+            return underlyingError
+
+        case let .configurationError(errorMessage, underlyingError, source):
+            return ErrorUtils.configurationError(message: errorMessage,
+                                                 underlyingError: underlyingError,
+                                                 fileName: source.file,
+                                                 functionName: source.function,
+                                                 line: source.line)
+
+        case let .noOfferingsFound(source):
+            return ErrorUtils.unexpectedBackendResponseError(fileName: source.file,
+                                                             functionName: source.function,
+                                                             line: source.line)
+
+        case let .missingProducts(identifiers, apiKeyValidationResult, source):
+            return ErrorUtils.configurationError(
+                message: Strings.offering.cannot_find_product_configuration_error(
+                    identifiers: identifiers,
+                    apiKeyValidationResult: apiKeyValidationResult
+                ).description,
+                fileName: source.file,
+                functionName: source.function,
+                line: source.line
+            )
+        }
+    }
+
+    static func configurationError(
+        _ errorMessage: String,
+        underlyingError: NSError?,
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) -> Self {
+        return .configurationError(errorMessage, underlyingError, .init(file: file, function: function, line: line))
+    }
+
+    static func noOfferingsFound(
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) -> Self {
+        return .noOfferingsFound(.init(file: file, function: function, line: line))
+    }
+
+    static func missingProducts(
+        identifiers: Set<String>,
+        apiKeyValidationResult: Configuration.APIKeyValidationResult,
+        file: String = #fileID,
+        function: String = #function,
+        line: UInt = #line
+    ) -> Self {
+        return .missingProducts(identifiers: identifiers,
+                                apiKeyValidationResult: apiKeyValidationResult,
+                                .init(file: file, function: function, line: line))
+    }
+
+}
+
+extension OfferingsManager.Error: CustomNSError {
+
+    var errorUserInfo: [String: Any] {
+        return [
+            NSUnderlyingErrorKey: self.underlyingError as NSError? as Any
+        ]
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .backendError: return nil
+        case let .timeout(underlyingError): return underlyingError.error.localizedDescription
+        case let .configurationError(message, _, _): return message
+        case .noOfferingsFound: return nil
+        case .missingProducts: return nil
+        }
+    }
+
+    fileprivate var underlyingError: Error? {
+        switch self {
+        case let .backendError(.networkError(error)): return error
+        case let .backendError(error): return error
+        case let .timeout(underlyingError): return underlyingError
+        case let .configurationError(_, error, _): return error
+        case .noOfferingsFound: return nil
+        case .missingProducts: return nil
+        }
+    }
+
+}
+
+struct OfferingsResultData {
+    let offerings: Offerings
+    let requestedProductIds: Set<String>
+    let notFoundProductIds: Set<String>
+}
+
+private struct OfferingsTrackingContext {
+    let trackDiagnostics: Bool
+    let startTime: Date
+}
+
+/// For UI Preview mode only.
+private struct PreviewProductType {
+    let type: String
+    let price: Double
+    let period: SubscriptionPeriod?
+
+    static let `default` = PreviewProductType(type: "lifetime", price: 249.99, period: nil)
+
+    private init(type: String, price: Double, period: SubscriptionPeriod?) {
+        self.type = type
+        self.price = price
+        self.period = period
+    }
+
+    init?(packageType: PackageType) {
+        switch packageType {
+        case .lifetime:
+            self = PreviewProductType(type: "lifetime",
+                                      price: 199.99,
+                                      period: nil)
+        case .annual:
+            self = PreviewProductType(type: "yearly",
+                                      price: 59.99,
+                                      period: SubscriptionPeriod(value: 1, unit: .year))
+        case .sixMonth:
+            self = PreviewProductType(type: "6 months",
+                                      price: 30.99,
+                                      period: SubscriptionPeriod(value: 3, unit: .month))
+        case .threeMonth:
+            self = PreviewProductType(type: "3 months",
+                                      price: 15.99,
+                                      period: SubscriptionPeriod(value: 3, unit: .month))
+        case .twoMonth:
+            self = PreviewProductType(type: "monthly",
+                                      price: 11.49,
+                                      period: SubscriptionPeriod(value: 2, unit: .month))
+        case .monthly:
+            self = PreviewProductType(type: "monthly",
+                                      price: 5.99,
+                                      period: SubscriptionPeriod(value: 1, unit: .month))
+        case .weekly:
+            self = PreviewProductType(type: "weekly",
+                                      price: 1.99,
+                                      period: SubscriptionPeriod(value: 1, unit: .week))
+        case .unknown, .custom:
+            return nil
+        }
+    }
+}

@@ -1,0 +1,772 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  PurchasesConfiguringTests.swift
+//
+//  Created by Nacho Soto on 5/25/22.
+
+import Nimble
+import XCTest
+
+@_spi(Internal) @testable import RevenueCat
+
+class PurchasesConfiguringTests: BasePurchasesTests {
+
+    func testIsAbleToBeInitialized() {
+        self.setupPurchases()
+        expect(self.purchases).toNot(beNil())
+    }
+
+    func testRemoteConfigRefreshesDuringLifecycleCacheUpdatesByDefault() {
+        self.setupPurchases()
+
+        expect(self.mockRemoteConfigManager.invokedRefreshRemoteConfigCount).toEventually(equal(1))
+
+        self.notificationCenter.fireNotifications()
+
+        expect(self.mockRemoteConfigManager.invokedRefreshRemoteConfigIfStaleCount) == 1
+        expect(self.mockRemoteConfigManager.invokedRefreshRemoteConfigCount) == 1
+    }
+
+    func testRemoteConfigIsNoOpInCustomEntitlementsComputationMode() {
+        self.systemInfo = MockSystemInfo(finishTransactions: true, customEntitlementsComputation: true)
+        self.systemInfo.stubbedRemoteConfigEnabled = true
+
+        self.initializePurchasesInstance(appUserId: Self.appUserID)
+
+        self.notificationCenter.fireNotifications()
+        self.purchases.logOut(completion: nil)
+        self.purchases.internalSwitchUser(to: "new-user")
+
+        expect(self.mockRemoteConfigManager.invokedRefreshRemoteConfigCount) == 0
+        expect(self.mockRemoteConfigManager.invokedRefreshRemoteConfigIfStaleCount) == 0
+    }
+
+    #if !os(watchOS)
+    func testUsingSharedInstanceWithoutInitializingThrowsAssertion() {
+        expect {
+            _ = Purchases.shared
+        }.to(throwAssertion())
+    }
+
+    func testUsingSharedInstanceAfterInitializingDoesntThrowAssertion() {
+        self.setupPurchases()
+        expect {
+            _ = Purchases.shared
+        }.toNot(throwAssertion())
+    }
+    #endif
+
+    func testIsConfiguredReturnsCorrectValue() {
+        expect(Purchases.isConfigured) == false
+        self.setupPurchases()
+        expect(Purchases.isConfigured) == true
+    }
+
+    func testConfigurationPassedThroughTimeouts() {
+        let networkTimeoutSeconds: TimeInterval = 9
+        let configurationBuilder = Configuration.Builder(withAPIKey: "")
+            .with(networkTimeout: networkTimeoutSeconds)
+            .with(storeKit1Timeout: networkTimeoutSeconds)
+        let purchases = Purchases.configure(with: configurationBuilder.build())
+
+        expect(purchases.networkTimeout) == networkTimeoutSeconds
+        expect(purchases.storeKitTimeout) == networkTimeoutSeconds
+        // The shared timeout manager must be built from the configured timeout too, otherwise every
+        // request would silently fall back to the built-in tiers.
+        expect(purchases.requestTimeoutManagerBaseTimeout) == networkTimeoutSeconds
+    }
+
+    func testSharedInstanceIsSetWhenConfiguring() {
+        let purchases = Purchases.configure(withAPIKey: "")
+        expect(Purchases.shared) === purchases
+    }
+
+    func testSharedInstanceIsSetWhenConfiguringWithConfiguration() {
+        let configurationBuilder = Configuration.Builder(withAPIKey: "")
+        let purchases = Purchases.configure(with: configurationBuilder.build())
+        expect(Purchases.shared) === purchases
+    }
+
+    @available(*, deprecated)
+    func testSharedInstanceIsSetWhenConfiguringWithAppUserID() {
+        let purchases = Purchases.configure(withAPIKey: "", appUserID: "")
+        expect(Purchases.shared) === purchases
+    }
+
+    @available(*, deprecated)
+    func testSharedInstanceIsSetWhenConfiguringWithObserverMode() {
+        let nonStaticString = String(123)
+        let purchases = Purchases.configure(withAPIKey: "",
+                                            appUserID: nonStaticString,
+                                            purchasesAreCompletedBy: .myApp,
+                                            storeKitVersion: .storeKit2)
+        expect(Purchases.shared) === purchases
+        expect(Purchases.shared.finishTransactions) == false
+        expect(Purchases.shared.purchasesAreCompletedBy) == .myApp
+    }
+
+    @available(*, deprecated)
+    func testSharedInstanceIsSetWhenConfiguringWithObserverModeDisabled() {
+        let nonStaticString = String(123)
+        let purchases = Purchases.configure(withAPIKey: "",
+                                            appUserID: nonStaticString,
+                                            purchasesAreCompletedBy: .revenueCat,
+                                            storeKitVersion: .storeKit2)
+        expect(Purchases.shared) === purchases
+        expect(Purchases.shared.finishTransactions) == true
+        expect(Purchases.shared.purchasesAreCompletedBy) == .revenueCat
+    }
+
+    @available(*, deprecated) // Ignore deprecation warnings
+    func testSharedInstanceIsSetWhenConfiguringWithAppUserIDAndUserDefaults() {
+        let nonStaticString = String(123)
+        let configurationBuilder = Configuration.Builder(withAPIKey: "")
+            .with(appUserID: nonStaticString)
+            .with(userDefaults: UserDefaults.standard)
+        let purchases = Purchases.configure(with: configurationBuilder.build())
+
+        expect(Purchases.shared) === purchases
+        expect(Purchases.shared.finishTransactions) == true
+        expect(Purchases.shared.purchasesAreCompletedBy) == .revenueCat
+    }
+
+    func testUserIdIsSetWhenConfiguringWithUserID() {
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(appUserID: Self.appUserID)
+        )
+        expect(purchases.appUserID) == Self.appUserID
+    }
+
+    @available(*, deprecated)
+    func testUserIdIsSetToAnonymousWhenConfiguringWithEmptyUserID() {
+        self.deviceCache.userIDStoredInCache = nil
+
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                // This test requires no previously stored user
+                .with(userDefaults: .emptyNewUserDefaults())
+                .with(appUserID: "")
+        )
+        expect(purchases.appUserID).toNot(beEmpty())
+        expect(IdentityManager.userIsAnonymous(purchases.appUserID))
+            .to(beTrue(), description: "User '\(purchases.appUserID)' should be anonymous")
+    }
+
+    func testUserIdOverridesPreviouslyConfiguredUser() {
+        // This test requires no previously stored user
+        let userDefaults: UserDefaults = .emptyNewUserDefaults()
+
+        let newUserID = Self.appUserID + "_new"
+
+        _ = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(userDefaults: userDefaults)
+                .with(appUserID: Self.appUserID)
+        )
+        Purchases.clearSingleton()
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(userDefaults: userDefaults)
+                .with(appUserID: newUserID)
+        )
+
+        expect(purchases.appUserID) == newUserID
+    }
+
+    func testNilUserIdIsIgnoredIfPreviousUserExists() {
+        // This test requires no previously stored user
+        let userDefaults: UserDefaults = .emptyNewUserDefaults()
+
+        _ = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(userDefaults: userDefaults)
+                .with(appUserID: Self.appUserID)
+        )
+        Purchases.clearSingleton()
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(userDefaults: userDefaults)
+                .with(appUserID: nil)
+        )
+
+        expect(purchases.appUserID) == Self.appUserID
+    }
+
+    @available(*, deprecated)
+    func testStaticUserIdSringLogsMessage() {
+        _ = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(appUserID: "Static string")
+        )
+
+        self.logger.verifyMessageWasLogged(Strings.identity.logging_in_with_static_string)
+    }
+
+    func testUserIdSringDoesNotLogMessage() {
+        let appUserID = "user ID"
+
+        _ = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(appUserID: appUserID)
+        )
+
+        self.logger.verifyMessageWasNotLogged(Strings.identity.logging_in_with_static_string)
+    }
+
+    func testApiKeyIsExposedThroughInternalSPI() {
+        let key = "test_configured_api_key"
+        let purchases = Purchases.configure(withAPIKey: key)
+
+        expect(purchases.apiKey) == key
+        expect(Purchases.shared.apiKey) == key
+    }
+
+    func testEntitlementVerificationModeDisabledDoesNotSetPublicKey() throws {
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(entitlementVerificationMode: .disabled)
+        )
+        expect(purchases.publicKey).to(beNil())
+    }
+
+    func testEntitlementVerificationModeInformationalSetsPublicKey() throws {
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(entitlementVerificationMode: .informational)
+        )
+        expect(purchases.publicKey).toNot(beNil())
+    }
+
+    // Can't compile this test while `Configuration.EntitlementVerificationMode.enforced` is unavailable.
+    /*
+    func testEntitlementVerificationModeEnforcedSetsPublicKey() throws {
+        let purchases = Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(entitlementVerificationMode: .enforced)
+        )
+        expect(purchases.publicKey).toNot(beNil())
+    }
+    */
+
+    func testFirstInitializationCallDelegate() async {
+        self.setupPurchases()
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toEventually(beGreaterThanOrEqualTo(1))
+    }
+
+    func testFirstInitializationDoesNotClearIntroEligibilityCache() async {
+        self.setupPurchases()
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toEventually(beGreaterThanOrEqualTo(1))
+
+        expect(self.cachingTrialOrIntroPriceEligibilityChecker.invokedClearCache) == false
+    }
+
+    func testFirstInitializationDoesNotClearPurchasedProductsCache() async {
+        self.setupPurchases()
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toEventually(beGreaterThanOrEqualTo(1))
+
+        expect(self.mockPurchasedProductsFetcher.invokedClearCache) == false
+    }
+
+    func testFirstInitializationFromForegroundDelegateForAnonIfNothingCached() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+        self.setupPurchases()
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toEventually(beGreaterThanOrEqualTo(1))
+    }
+
+    func testFirstInitializationFromBackgroundDoesntCallDelegateForAnonIfNothingCached() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = true
+        self.setupPurchases()
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toAlways(equal(0))
+    }
+
+    func testFirstInitializationFromBackgroundCallsDelegateForAnonIfInfoCached() async throws {
+        self.systemInfo.stubbedIsApplicationBackgrounded = true
+
+        let info = try CustomerInfo(data: Self.emptyCustomerInfoData)
+        let object = try info.jsonEncodedData
+
+        self.deviceCache.cachedCustomerInfo[self.identityManager.currentAppUserID] = object
+
+        self.setupPurchases()
+
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toEventually(beGreaterThanOrEqualTo(1))
+        expect(self.purchasesDelegate.customerInfo) == info
+    }
+
+    func testSettingTheDelegateAfterInitializationSendsCachedCustomerInfo() throws {
+        let info = try CustomerInfo(data: Self.emptyCustomerInfoData)
+        let object = try info.jsonEncodedData
+
+        self.deviceCache.cachedCustomerInfo[identityManager.currentAppUserID] = object
+
+        self.setupPurchases(withDelegate: false)
+        expect(self.purchasesDelegate.customerInfoReceivedCount) == 0
+
+        self.purchases.delegate = self.purchasesDelegate
+        expect(self.purchasesDelegate.customerInfoReceivedCount) == 1
+        expect(self.purchasesDelegate.customerInfo) == info
+    }
+
+    func testSettingTheDelegateLaterPastInitializationSendsCachedCustomerInfo() throws {
+        let info = try CustomerInfo(data: Self.emptyCustomerInfoData)
+        let object = try info.jsonEncodedData
+
+        self.deviceCache.cachedCustomerInfo[identityManager.currentAppUserID] = object
+
+        self.setupPurchases(withDelegate: false)
+        expect(self.purchasesDelegate.customerInfoReceivedCount) == 0
+
+        let expectation = XCTestExpectation()
+
+        DispatchQueue.main.async {
+            self.purchases.delegate = self.purchasesDelegate
+            expect(self.purchasesDelegate.customerInfoReceivedCount) == 1
+            expect(self.purchasesDelegate.customerInfo) == info
+
+            expectation.fulfill()
+        }
+
+        self.wait(for: [expectation], timeout: 5)
+    }
+
+    func testFirstInitializationFromBackgroundDoesntUpdateCustomerInfoCache() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = true
+        self.setupPurchases()
+        await expect(self.backend.getCustomerInfoCallCount).toEventually(equal(0))
+    }
+
+    func testFirstInitializationFromForegroundUpdatesCustomerInfoCacheIfNotInUserDefaults() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+        self.setupPurchases()
+        await expect(self.backend.getCustomerInfoCallCount).toEventually(equal(1))
+    }
+
+    func testFirstInitializationFromBackgroundAndDefaultConfigurationDoesNotLogHealth() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = true
+        self.setupPurchases()
+        await expect(self.backend.healthReportRequests).toEventually(equal([]))
+    }
+
+    func testFirstInitializationFromForegroundAndDefaultConfigurationLogsHealth() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+        self.setupPurchases()
+        await expect(self.backend.healthReportRequests).toEventually(equal([self.identityManager.currentAppUserID]))
+    }
+
+    func testFirstInitializationFromForegroundAndDefaultConfigurationWithNoAvailabilityDoesNotLogHealth() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+        self.backend.overrideHealthReportAvailabilityResponse = HealthReportAvailability(reportLogs: false)
+        self.setupPurchases()
+        await expect(self.backend.healthReportAvailabilityRequests)
+            .toEventually(equal([identityManager.currentAppUserID]))
+        await expect(self.backend.healthReportRequests).toEventually(equal([]))
+    }
+
+    func testHealthCheckIsEnqueuedAfterCacheOperations() async {
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+        self.setupPurchases()
+
+        // healthReportAvailability should be the last operation enqueued,
+        // so once it's called, all cache operations must have already been called.
+        await expect(self.backend.healthReportAvailabilityRequests).toEventually(haveCount(1))
+
+        expect(self.backend.getCustomerInfoCallCount).to(beGreaterThan(0))
+        expect(self.mockOfferingsManager.invokedUpdateOfferingsCacheCount).to(beGreaterThan(0))
+        expect(self.mockOfflineEntitlementsManager.invokedUpdateProductsEntitlementsCacheIfStaleCount)
+            .to(beGreaterThan(0))
+
+        // Verify getCustomerInfo was called before healthReportAvailability
+        let order = self.backend.callOrder
+        guard let customerInfoIndex = order.firstIndex(of: .getCustomerInfo),
+              let healthAvailabilityIndex = order.firstIndex(of: .healthReportAvailability) else {
+            fail("Expected both getCustomerInfo and healthReportAvailability to be called")
+            return
+        }
+        expect(customerInfoIndex).to(beLessThan(healthAvailabilityIndex))
+    }
+
+    func testFirstInitializationFromForegroundUpdatesCustomerInfoCacheIfUserDefaultsCacheStale() async {
+        let staleCacheDateForForeground = Calendar.current.date(byAdding: .minute, value: -20, to: Date())!
+        self.deviceCache.setCustomerInfoCache(timestamp: staleCacheDateForForeground,
+                                              appUserID: identityManager.currentAppUserID)
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+
+        self.setupPurchases()
+
+        await expect(self.backend.getCustomerInfoCallCount).toEventually(equal(1))
+    }
+
+    func testFirstInitializationFromForegroundUpdatesCustomerInfoEvenIfCacheValid() async {
+        let staleCacheDateForForeground = Calendar.current.date(byAdding: .minute, value: -2, to: Date())!
+        self.deviceCache.setCustomerInfoCache(timestamp: staleCacheDateForForeground,
+                                              appUserID: identityManager.currentAppUserID)
+
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+
+        self.setupPurchases()
+
+        await expect(self.backend.getCustomerInfoCallCount).toEventually(equal(1))
+    }
+
+    func testIsAnonymous() {
+        setupAnonPurchases()
+        expect(self.purchases.isAnonymous).to(beTrue())
+    }
+
+    func testIsNotAnonymous() {
+        setupPurchases()
+        expect(self.purchases.isAnonymous).to(beFalse())
+    }
+
+    func testSetsSelfAsStoreKit1WrapperDelegate() {
+        self.setupPurchases()
+
+        expect(self.storeKit1Wrapper.delegate) === self.purchasesOrchestrator
+    }
+
+    func testSetsSelfAsStoreKit1WrapperDelegateForSK1() {
+        let configurationBuilder = Configuration.Builder(withAPIKey: "")
+            .with(storeKitVersion: .storeKit1)
+        let purchases = Purchases.configure(with: configurationBuilder.build())
+
+        expect(purchases.isStoreKit1Configured) == true
+    }
+
+    func testDoesNotInitializeSK1IfSK2Enabled() throws {
+        try AvailabilityChecks.iOS16APIAvailableOrSkipTest()
+
+        let configurationBuilder = Configuration.Builder(withAPIKey: "")
+            .with(storeKitVersion: .storeKit2)
+        let purchases = Purchases.configure(with: configurationBuilder.build())
+
+        expect(purchases.isStoreKit1Configured) == false
+    }
+
+    func testSetsPaymentQueueWrapperDelegateToPurchasesOrchestratorIfSK1IsEnabled() {
+        self.systemInfo = MockSystemInfo(finishTransactions: false,
+                                         storeKitVersion: .storeKit1)
+
+        self.setupPurchases()
+
+        expect(self.mockPaymentQueueWrapper.delegate).to(beNil())
+    }
+
+    func testSetsPaymentQueueWrapperDelegateToPaymentQueueWrapperIfSK1IsNotEnabled() throws {
+        try AvailabilityChecks.iOS16APIAvailableOrSkipTest()
+
+        self.systemInfo = MockSystemInfo(finishTransactions: false,
+                                         storeKitVersion: .storeKit2)
+
+        self.setupPurchases()
+
+        expect(self.mockPaymentQueueWrapper.delegate) === self.purchasesOrchestrator
+    }
+
+    // MARK: - Custom Entitlement Computation
+    func testCustomEntitlementComputationSkipsFirstDelegateCall() async throws {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         customEntitlementsComputation: true)
+        self.setupPurchases(withDelegate: true) // This sets the delegate to self.purchasesDelegate
+
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toAlways(equal(0))
+
+        let anotherDelegate = MockPurchasesDelegate()
+        self.purchases.delegate = anotherDelegate
+        expect(anotherDelegate.customerInfoReceivedCount) == 0
+    }
+
+    func testWithoutCustomEntitlementComputationDoesntSkipFirstDelegateCall() async throws {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         customEntitlementsComputation: false)
+        self.setupPurchases(withDelegate: true) // This sets the delegate to self.purchasesDelegate
+
+        await expect(self.purchasesDelegate.customerInfoReceivedCount).toEventually(beGreaterThanOrEqualTo(1))
+
+        let anotherDelegate = MockPurchasesDelegate()
+        self.purchases.delegate = anotherDelegate
+        expect(anotherDelegate.customerInfoReceivedCount) == 1
+    }
+
+    #if !os(watchOS)
+    func testConfigureWithCustomEntitlementComputationFatalErrorIfNoAppUserID() throws {
+        expect {
+            _ = Purchases(apiKey: "",
+                          appUserID: nil,
+                          userDefaults: .emptyNewUserDefaults(),
+                          observerMode: false,
+                          responseVerificationMode: .default,
+                          dangerousSettings: .init(customEntitlementComputation: true),
+                          showStoreMessagesAutomatically: true,
+                          preferredLocale: nil,
+                          currentConfiguration: nil)
+        }.to(throwAssertion())
+    }
+
+    func testConfigureWithCustomEntitlementComputationNoFatalErrorIfAppUserIDPassedIn() throws {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         customEntitlementsComputation: true)
+        expect {
+            self.setupPurchases()
+        }.toNot(throwAssertion())
+    }
+    #endif
+
+    func testConfigureWithCustomEntitlementComputationLogsInformationMessage() throws {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         customEntitlementsComputation: true)
+        self.setupPurchases()
+
+        self.logger.verifyMessageWasLogged(Strings.configure.custom_entitlements_computation_enabled, level: .info)
+    }
+
+    func testConfigureWithoutCustomEntitlementComputationDoesntLogInformationMessage() throws {
+        self.setupPurchases()
+
+        self.logger.verifyMessageWasNotLogged(Strings.configure.custom_entitlements_computation_enabled)
+    }
+
+    func testConfigureWithCustomEntitlementComputationDisablesLogOut() async throws {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         customEntitlementsComputation: true)
+        self.setupPurchases()
+
+        var receivedCustomerInfo: CustomerInfo?
+        var receivedError: PublicError?
+        var completionCalled = false
+
+        self.purchases.logOut { customerInfo, error in
+            completionCalled = true
+            receivedCustomerInfo = customerInfo
+            receivedError = error
+        }
+
+        await expect(completionCalled).toEventually(beTrue())
+        expect(receivedCustomerInfo).to(beNil())
+        let unwrappedError = try XCTUnwrap(receivedError)
+        expect(unwrappedError).to(matchError(ErrorUtils.featureNotAvailableInCustomEntitlementsComputationModeError()))
+    }
+
+    func testConfigureWithCustomEntitlementComputationDisablesAutomaticCacheUpdateForCustomerInfo() async throws {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         customEntitlementsComputation: true)
+        self.systemInfo.stubbedIsApplicationBackgrounded = false
+
+        self.setupPurchases()
+
+        await expect(self.backend.getCustomerInfoCallCount).toEventually(equal(0))
+    }
+
+    // MARK: - UserDefaults
+
+    func testCustomUserDefaultsIsUsed() {
+        expect(Self.create(userDefaults: Self.customUserDefaults).configuredUserDefaults) === Self.customUserDefaults
+    }
+
+    func testDefaultUserDefaultsIsUsedByDefault() {
+        expect(Self.create(userDefaults: nil).configuredUserDefaults) === UserDefaults.computeDefault()
+    }
+
+    private static func create(userDefaults: UserDefaults?) -> Purchases {
+        var configurationBuilder: Configuration.Builder = .init(withAPIKey: "")
+
+        if let userDefaults = userDefaults {
+            configurationBuilder = configurationBuilder.with(userDefaults: userDefaults)
+        }
+
+        return Purchases.configure(with: configurationBuilder.build())
+    }
+
+    private static let customUserDefaults: UserDefaults = .init(suiteName: "com.revenuecat.testing_user_defaults")!
+
+    // MARK: - OfflineCustomerInfoCreator
+
+    func testPurchasesAreCompletedByMyAppDoesNotCreateOfflineCustomerInfoCreator() {
+        expect(Self.create(purchasesAreCompletedBy: .myApp).offlineCustomerInfoEnabled) == false
+    }
+
+    func testOlderVersionsDoNoCreateOfflineCustomerInfo() throws {
+        if #available(iOS 15.0, tvOS 15.0, watchOS 8.0, macOS 12.0, *) {
+            throw XCTSkip("Test for older versions")
+        }
+
+        expect(Self.create(purchasesAreCompletedBy: .revenueCat).offlineCustomerInfoEnabled) == false
+    }
+
+    func testOfflineCustomerInfoEnabled() throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        expect(Self.create(purchasesAreCompletedBy: .revenueCat).offlineCustomerInfoEnabled) == true
+    }
+
+    func testOfflineCustomerInfoDisabledForCustomEntitlementsComputation() throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        expect(
+            Self.create(
+                purchasesAreCompletedBy: .revenueCat,
+                dangerousSettings: .init(customEntitlementComputation: true),
+                appUserID: "MockUserID"
+            ).offlineCustomerInfoEnabled
+        ) == false
+    }
+
+    // MARK: StoreKit2PurchaseIntentListener Configuration Tests
+    func testDoesntSetPurchasesOrchestratorStoreKit2PurchaseIntentListenerIfSK1IsEnabled() {
+        self.systemInfo = MockSystemInfo(finishTransactions: false,
+                                         storeKitVersion: .storeKit1)
+
+        self.setupPurchases()
+
+        expect(self.purchasesOrchestrator._storeKit2PurchaseIntentListener).to(beNil())
+    }
+
+    func testSetsPurchasesOrchestratorStoreKit2PurchaseIntentListenerIfSK2IsEnabled() async {
+        self.systemInfo = MockSystemInfo(finishTransactions: false,
+                                         storeKitVersion: .storeKit2)
+
+        self.setupPurchases()
+
+        #if os(watchOS) || os(tvOS) || os(visionOS)
+        expect(self.purchasesOrchestrator._storeKit2PurchaseIntentListener).to(beNil())
+        #else
+        if #available(iOS 16.4, macOS 14.4, *) {
+            await expect(self.purchasesOrchestrator._storeKit2PurchaseIntentListener).toEventuallyNot(beNil())
+        } else {
+            expect(self.purchasesOrchestrator._storeKit2PurchaseIntentListener).to(beNil())
+        }
+        #endif
+    }
+
+    func testNoCustomerInfoFetchInUIPreviewModeOnDidBecomeActive() async {
+        self.systemInfo = MockSystemInfo(finishTransactions: true,
+                                         uiPreviewMode: true,
+                                         storeKitVersion: self.storeKitVersion,
+                                         clock: self.clock)
+        self.setupPurchases()
+
+        self.deviceCache.stubbedIsCustomerInfoCacheStale = true
+
+        self.notificationCenter.fireNotifications()
+        await expect(self.backend.getCustomerInfoCallCount).toAlways(equal(0))
+    }
+
+  private static func create(
+      purchasesAreCompletedBy: PurchasesAreCompletedBy,
+      dangerousSettings: DangerousSettings = .init(),
+      appUserID: String? = nil
+  ) -> Purchases {
+        return Purchases.configure(
+            with: .init(withAPIKey: "")
+                .with(purchasesAreCompletedBy: purchasesAreCompletedBy, storeKitVersion: .storeKit1)
+                .with(dangerousSettings: dangerousSettings)
+                .with(appUserID: appUserID)
+        )
+    }
+
+    // MARK: - Configuration deduplication
+
+    func testConfigureTwiceWithSameConfigurationReusesInstanceAndLogsDedupMessage() {
+        let configuration = Self.dedupConfiguration()
+
+        let first = Purchases.configure(with: configuration)
+        let second = Purchases.configure(with: configuration)
+
+        expect(first) === second
+        expect(Purchases.shared) === first
+        self.logger.verifyMessageWasLogged(
+            Strings.configure.instance_already_exists_with_same_config,
+            level: .info
+        )
+    }
+
+    func testConfigureTwiceWithSameConfigurationDoesNotLogReplacementWarning() {
+        let configuration = Self.dedupConfiguration()
+
+        _ = Purchases.configure(with: configuration)
+        _ = Purchases.configure(with: configuration)
+
+        self.logger.verifyMessageWasNotLogged(Strings.configure.purchase_instance_already_set)
+    }
+
+    func testConfigureTwiceWithEqualButDistinctConfigurationsReturnsSameInstance() {
+        // Two `Configuration` instances built from identical builders should still
+        // dedupe — the check is by equality, not by object identity.
+        let first = Purchases.configure(with: Self.dedupConfiguration())
+        let second = Purchases.configure(with: Self.dedupConfiguration())
+
+        expect(first) === second
+    }
+
+    func testConfigureTwiceWithSameNilUserDefaultsReturnsSameInstance() {
+        let first = Purchases.configure(with: Self.dedupConfiguration(userDefaults: nil))
+        let second = Purchases.configure(with: Self.dedupConfiguration(userDefaults: nil))
+
+        expect(first) === second
+    }
+
+    func testConfigureTwiceWithSameUserDefaultsReferenceReturnsSameInstance() {
+        let shared = UserDefaults(suiteName: "rc_dedup_test_shared")!
+        defer { shared.removePersistentDomain(forName: "rc_dedup_test_shared") }
+
+        let first = Purchases.configure(with: Self.dedupConfiguration(userDefaults: shared))
+        let second = Purchases.configure(with: Self.dedupConfiguration(userDefaults: shared))
+
+        expect(first) === second
+    }
+
+    /// Asserts the dedup short-circuit correctly differentiates configurations without
+    /// going through the public `Purchases.configure(with:)` API, because triggering the
+    /// historical "different configuration" precondition in test builds would otherwise
+    /// crash. The configuration mismatch path is still exercised end-to-end in
+    /// `Configuration` equality tests + the `setDefaultInstance` behavior below.
+    func testSetDefaultInstanceDedupingAgainstDifferentConfigurationDoesNotReuseExistingInstance() {
+        let first = Purchases.configure(with: Self.dedupConfiguration())
+        let different = Self.dedupConfiguration(apiKey: "different_key")
+
+        // We can't safely re-enter `Purchases.configure(with:)` here in DEBUG tests because
+        // a different configuration would fire the historical precondition. Instead, check
+        // the dedup decision directly via the `Configuration` equality the short-circuit
+        // relies on.
+        expect(first.currentConfiguration) != different
+        expect(first.currentConfiguration?.apiKey) != different.apiKey
+    }
+
+    func testSetDefaultInstanceDedupingAgainstSameConfigurationReusesExistingInstance() {
+        let configuration = Self.dedupConfiguration()
+        let first = Purchases.configure(with: configuration)
+
+        // Equivalent assertion for the same-config path: the stored `currentConfiguration`
+        // is equal to the configuration we just used, which is exactly the condition the
+        // short-circuit inside `setDefaultInstance(_:dedupingAgainst:)` checks.
+        expect(first.currentConfiguration) == configuration
+    }
+
+    private static func dedupConfiguration(
+        apiKey: String = "test_dedup_api_key",
+        userDefaults: UserDefaults? = .standard
+    ) -> Configuration {
+        var builder = Configuration.Builder(withAPIKey: apiKey)
+            .with(appUserID: "test_user")
+        if let userDefaults {
+            builder = builder.with(userDefaults: userDefaults)
+        }
+        return builder.build()
+    }
+
+}
+
+private extension UserDefaults {
+
+    static func emptyNewUserDefaults() -> Self {
+        return .init(suiteName: UUID().uuidString)!
+    }
+
+}

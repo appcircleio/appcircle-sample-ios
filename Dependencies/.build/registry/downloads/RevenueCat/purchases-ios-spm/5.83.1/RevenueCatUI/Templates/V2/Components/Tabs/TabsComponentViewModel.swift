@@ -1,0 +1,218 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  TabsComponentViewModel.swift
+//
+//  Created by Josh Holtz on 1/9/25.
+
+@_spi(Internal) import RevenueCat
+import SwiftUI
+
+#if !os(tvOS) // For Paywalls V2
+
+typealias PresentedTabsPartial = PaywallComponent.PartialTabsComponent
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+class TabsComponentViewModel {
+
+    private let component: PaywallComponent.TabsComponent
+    let uiConfigProvider: UIConfigProvider
+    private let presentedOverrides: PresentedOverrides<PresentedTabsPartial>?
+
+    let controlStackViewModel: StackComponentViewModel
+    let tabViewModels: [String: TabViewModel]
+    let tabIds: [String]
+    let tabContextNamesById: [String: String]
+    let defaultTabId: String?
+    let name: String?
+
+    /// Guards the one-time propagation of the initial tab's package into the parent
+    /// `PackageContext`. Lives here, not as per-view `@State`, so SwiftUI's duplicate
+    /// `LoadedTabsComponentView` instances (from `ViewThatFits` measuring both of its branches)
+    /// share the guard instead of each re-seeding and clobbering a real tab switch.
+    var didSeedInitialState = false
+
+    /// The `TabControlContext` shared by every `LoadedTabsComponentView` backed by this view
+    /// model, so a `ViewThatFits` duplicate can't diverge from the tab the user actually selected.
+    lazy var tabControlContext = TabControlContext(
+        controlStackViewModel: self.controlStackViewModel,
+        tabIds: self.tabIds,
+        defaultTabId: self.defaultTabId,
+        name: self.name,
+        tabContextNamesById: self.tabContextNamesById
+    )
+
+    /// State-store updates, dispatched when the selected tab changes
+    /// (e.g. `{ "set": "<tab state key>", "to": "$value" }`, where `$value`
+    /// is the newly selected tab id). `nil`/empty when the paywall declares no tab state.
+    var stateUpdates: [PaywallComponent.StateUpdate]? {
+        self.component.stateUpdates
+    }
+
+    init(
+        component: PaywallComponent.TabsComponent,
+        controlStackViewModel: StackComponentViewModel,
+        tabViewModels: [TabViewModel],
+        uiConfigProvider: UIConfigProvider,
+        discardRules: Bool = false
+    ) {
+        self.component = component
+        self.controlStackViewModel = controlStackViewModel
+        self.tabViewModels = Dictionary(uniqueKeysWithValues: tabViewModels.map { tabViewModel in
+            return (tabViewModel.tab.id, tabViewModel)
+        })
+        self.tabIds = tabViewModels.map(\.tab.id)
+        self.tabContextNamesById = Dictionary(
+            uniqueKeysWithValues: tabViewModels.compactMap { tabViewModel in
+                tabViewModel.name.map { (tabViewModel.tab.id, $0) }
+            }
+        )
+        self.defaultTabId = component.defaultTabId
+        self.name = component.name
+        self.uiConfigProvider = uiConfigProvider
+
+        self.presentedOverrides = self.component.overrides?.toPresentedOverrides(discardRules: discardRules)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func styles(
+        state: ComponentViewState,
+        condition: ScreenCondition,
+        isEligibleForIntroOffer: Bool,
+        isEligibleForPromoOffer: Bool,
+        selectedPackageId: String?,
+        customVariables: [String: CustomVariableValue],
+        colorScheme: ColorScheme
+    ) -> TabsComponentStyle {
+        let conditionContext = self.uiConfigProvider.conditionContext(
+            selectedPackageId: selectedPackageId,
+            customVariables: customVariables
+        )
+
+        let partial = PresentedTabsPartial.buildPartial(
+            state: state,
+            condition: condition,
+            isEligibleForIntroOffer: isEligibleForIntroOffer,
+            isEligibleForPromoOffer: isEligibleForPromoOffer,
+            conditionContext: conditionContext,
+            with: self.presentedOverrides
+        )
+
+        return TabsComponentStyle(
+            uiConfigProvider: self.uiConfigProvider,
+            visible: partial?.visible ?? self.component.visible ?? true,
+            size: partial?.size ?? self.component.size,
+            padding: partial?.padding ?? self.component.padding,
+            margin: partial?.margin ?? self.component.margin,
+            background: partial?.background ?? self.component.background,
+            shape: partial?.shape ?? self.component.shape,
+            border: partial?.border ?? self.component.border,
+            shadow: partial?.shadow ?? self.component.shadow,
+            colorScheme: colorScheme
+        )
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+class TabViewModel {
+
+    let tab: PaywallComponent.TabsComponent.Tab
+    let uiConfigProvider: UIConfigProvider
+    let stackViewModel: StackComponentViewModel
+    let defaultSelectedPackage: Package?
+    let packages: [Package]
+
+    var name: String? {
+        return self.tab.name
+    }
+
+    init(
+        tab: PaywallComponent.TabsComponent.Tab,
+        stackViewModel: StackComponentViewModel,
+        defaultSelectedPackage: Package?,
+        packages: [Package],
+        uiConfigProvider: UIConfigProvider
+    ) {
+        self.tab = tab
+        self.stackViewModel = stackViewModel
+        self.defaultSelectedPackage = defaultSelectedPackage
+        self.packages = packages
+        self.uiConfigProvider = uiConfigProvider
+    }
+
+}
+
+extension PresentedTabsPartial: PresentedPartial {
+
+    static func combine(
+        _ base: PaywallComponent.PartialTabsComponent?,
+        with other: PaywallComponent.PartialTabsComponent?
+    ) -> Self {
+
+        let visible = other?.visible ?? base?.visible
+        let size = other?.size ?? base?.size
+        let background = other?.background ?? base?.background
+        let padding = other?.padding ?? base?.padding
+        let margin = other?.margin ?? base?.margin
+        let shape = other?.shape ?? base?.shape
+        let border = other?.border ?? base?.border
+        let shadow = other?.shadow ?? base?.shadow
+
+        return .init(
+            visible: visible,
+            size: size,
+            padding: padding,
+            margin: margin,
+            background: background,
+            shape: shape,
+            border: border,
+            shadow: shadow
+        )
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+struct TabsComponentStyle {
+
+    let visible: Bool
+    let size: PaywallComponent.Size
+    let backgroundStyle: BackgroundStyle?
+    let padding: EdgeInsets
+    let margin: EdgeInsets
+    let shape: ShapeModifier.Shape?
+    let border: ShapeModifier.BorderInfo?
+    let shadow: ShadowModifier.ShadowInfo?
+
+    init(
+        uiConfigProvider: UIConfigProvider,
+        visible: Bool,
+        size: PaywallComponent.Size,
+        padding: PaywallComponent.Padding,
+        margin: PaywallComponent.Padding,
+        background: PaywallComponent.Background?,
+        shape: PaywallComponent.Shape?,
+        border: PaywallComponent.Border?,
+        shadow: PaywallComponent.Shadow?,
+        colorScheme: ColorScheme
+    ) {
+        self.visible = visible
+        self.size = size
+        self.backgroundStyle = background?.asDisplayable(uiConfigProvider: uiConfigProvider)
+        self.padding = padding.edgeInsets
+        self.margin = margin.edgeInsets
+        self.shape = shape?.shape
+        self.border = border?.border(uiConfigProvider: uiConfigProvider)
+        self.shadow = shadow?.shadow(uiConfigProvider: uiConfigProvider, colorScheme: colorScheme)
+    }
+
+}
+
+#endif

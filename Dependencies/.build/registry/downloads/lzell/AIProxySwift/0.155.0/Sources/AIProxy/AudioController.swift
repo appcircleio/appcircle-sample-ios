@@ -1,0 +1,189 @@
+//
+//  AudioController.swift
+//  AIProxy
+//
+//  Created by Lou Zell on 5/29/25.
+//
+
+import AVFoundation
+
+/// Use this class to control the streaming of mic data and playback of 24kHz signed PCM16, little-endian data.
+/// Audio played using the `playPCM16Audio` method does not interfere with the mic data streaming out of the `micStream` AsyncStream.
+/// That is, if you use this to control audio in an OpenAI realtime session, the model will not hear itself.
+///
+/// For a usage example, see the OpenAI realtime snippet here:
+/// https://github.com/lzell/AIProxySwift#how-use-realtime-audio-with-openai
+///
+/// ## Implementor's note
+/// We use either AVAudioEngine or AudioToolbox for mic data, depending on the platform and whether headphones are attached.
+/// The following arrangement provides for the best user experience:
+///
+///     +----------+--------------------------------+-------------------------------------+
+///     | Platform | Headphones                     | Audio API                           |
+///     +----------+--------------------------------+-------------------------------------+
+///     | macOS    | Yes                            | AudioEngine                         |
+///     | macOS    | No                             | AudioToolbox                        |
+///     | iOS      | Yes                            | AudioEngine                         |
+///     | iOS      | No                             | AudioToolbox                        |
+///     | iOS      | No + useManualEchoCancellation | AudioToolbox + manual rendering AEC |
+///     | watchOS  | Yes                            | AudioEngine                         |
+///     | watchOS  | No                             | AudioEngine                         |
+///     +----------+--------------------------------+-------------------------------------+
+///
+@AIProxyActor public final class AudioController {
+    public enum Mode {
+        case record
+        case playback
+    }
+
+    public let useManualEchoCancellation: Bool
+    public let modes: [Mode]
+    private let audioEngine: AVAudioEngine
+    private var microphonePCMSampleVendor: MicrophonePCMSampleVendor? = nil
+    private var audioPCMPlayer: AudioPCMPlayer? = nil
+    private var pendingUTF8Byte: UInt8? = nil
+
+    public init(
+        modes: [Mode],
+        useManualEchoCancellation: Bool = false
+    ) async throws {
+        self.modes = modes
+        self.useManualEchoCancellation = useManualEchoCancellation
+                                         && modes.contains(.record) && modes.contains(.playback)
+                                         && !AIProxyUtils.headphonesConnected
+
+
+        #if os(iOS)
+        // This is not respected if `setVoiceProcessingEnabled(true)` is used :/
+        // Instead, I've added my own accumulator.
+        // try? AVAudioSession.sharedInstance().setPreferredIOBufferDuration(0.1)
+        // print("I/O buffer duration:", AVAudioSession.sharedInstance().ioBufferDuration)
+        try? AVAudioSession.sharedInstance().setCategory(
+            .playAndRecord,
+            mode: .voiceChat,
+            options: [.defaultToSpeaker, .allowBluetoothHFP]
+        )
+        try? AVAudioSession.sharedInstance().setActive(true, options: [])
+
+        #elseif os(watchOS)
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord)
+        _ = try? await AVAudioSession.sharedInstance().activate(options: [])
+        #endif
+
+        self.audioEngine = AVAudioEngine()
+
+        if self.useManualEchoCancellation {
+            let renderFormat = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: 44100,
+                channels: 1,
+                interleaved: true
+            )!
+            try audioEngine.enableManualRenderingMode(
+                .realtime,
+                format: renderFormat,
+                maximumFrameCount: 4096
+            )
+        }
+
+        if modes.contains(.record) {
+            #if os(macOS) || os(iOS)
+            self.microphonePCMSampleVendor = AIProxyUtils.headphonesConnected
+                                               ? try MicrophonePCMSampleVendorAE(audioEngine: self.audioEngine)
+                                               : MicrophonePCMSampleVendorAT(
+                                                   audioEngine: self.audioEngine,
+                                                   useManualEchoCancellation: self.useManualEchoCancellation
+                                               )
+            #else
+            self.microphonePCMSampleVendor = try MicrophonePCMSampleVendorAE(audioEngine: self.audioEngine)
+            #endif
+        }
+
+
+        if modes.contains(.playback) {
+            self.audioPCMPlayer = try await AudioPCMPlayer(audioEngine: self.audioEngine)
+        }
+
+        self.audioEngine.prepare()
+
+        // Nesting `start` in a Task is necessary on watchOS.
+        // There is some sort of race, and letting the runloop tick seems to "fix" it.
+        // If I call `prepare` and `start` in serial succession, then there is no playback on watchOS (sometimes).
+        #if os(watchOS)
+        Task {
+            try self.audioEngine.start()
+        }
+        #else
+        try self.audioEngine.start()
+        #endif
+    }
+
+    deinit {
+        logIf(.debug)?.debug("AIProxy: AudioPlayer is being freed")
+    }
+
+    public func micStream() throws -> AsyncStream<AVAudioPCMBuffer> {
+        guard self.modes.contains(.record),
+              let microphonePCMSampleVendor = self.microphonePCMSampleVendor else {
+            throw AIProxyError.assertion("Please pass [.record] to the AudioController initializer")
+        }
+        return try microphonePCMSampleVendor.start()
+    }
+
+    public func stop() {
+        self.microphonePCMSampleVendor?.stop()
+        self.audioPCMPlayer?.interruptPlayback()
+    }
+
+    public func playPCM16Audio(base64String: String) {
+        guard self.modes.contains(.playback),
+              let audioPCMPlayer = self.audioPCMPlayer else {
+            logIf(.error)?.error("Please pass [.playback] to the AudioController initializer")
+            return
+        }
+        audioPCMPlayer.playPCM16Audio(from: base64String)
+    }
+
+    /// Plays PCM16 audio. If audio is currently being played from a previous call, the new `audioData` is enqueued.
+    ///
+    /// This method safely reconciles `audioData` that is split across a byte boundary, e.g. the two separate bytes
+    /// of a PCM16 sample arriving in separate calls to `playPCM16Audio`.
+    ///
+    /// - Parameter audioData: signed, PCM16Int little-endian audio data at a 24kHz sample rate
+    public func playPCM16Audio(data audioData: Data) {
+        guard self.modes.contains(.playback),
+              let audioPCMPlayer = self.audioPCMPlayer else {
+            logIf(.error)?.error("Please pass [.playback] to the AudioController initializer")
+            return
+        }
+
+        guard !audioData.isEmpty else {
+            return
+        }
+
+        var sampleBuffer: Data
+        if let p = self.pendingUTF8Byte {
+            sampleBuffer = Data([p]) + audioData
+            self.pendingUTF8Byte = nil
+        } else {
+            sampleBuffer = audioData
+        }
+
+        if (sampleBuffer.count & 1) != 0 {
+            self.pendingUTF8Byte = sampleBuffer.removeLast()
+        }
+
+        if !sampleBuffer.isEmpty {
+            audioPCMPlayer.playPCM16Audio(data: sampleBuffer)
+        }
+    }
+
+    public func interruptPlayback() {
+        guard self.modes.contains(.playback),
+              let audioPCMPlayer = self.audioPCMPlayer else {
+            logIf(.error)?.error("Please pass [.playback] to the AudioController initializer")
+            return
+        }
+        audioPCMPlayer.interruptPlayback()
+    }
+}

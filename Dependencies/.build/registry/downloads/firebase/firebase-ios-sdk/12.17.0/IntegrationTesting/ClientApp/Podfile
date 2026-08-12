@@ -1,0 +1,34 @@
+source 'https://github.com/firebase/SpecsDev.git'
+source 'https://github.com/firebase/SpecsStaging.git'
+source 'https://cdn.cocoapods.org/'
+
+target 'ClientApp-CocoaPods' do
+  platform :ios, '15.0'
+
+  use_frameworks!
+
+  pod 'FirebaseCore', :path => '../../'
+  pod 'FirebaseCoreInternal', :path => '../../'
+  pod 'FirebaseCoreExtension', :path => '../../'
+  pod 'FirebaseInstallations', :path => '../../'
+  pod 'FirebaseAnalytics' # Binary pods don't work with `:path`.
+  pod 'FirebaseABTesting', :path => '../../'
+  pod 'FirebaseAppCheck', :path => '../../'
+  pod 'FirebaseRemoteConfig', :path => '../../'
+  pod 'FirebaseRemoteConfigInterop', :path => '../../'
+  pod 'FirebaseAppDistribution', :path => '../../'
+  pod 'FirebaseAuthInterop', :path => '../../'
+  pod 'FirebaseAuth', :path => '../../'
+  pod 'FirebaseCrashlytics', :path => '../../'
+  pod 'FirebaseDatabase', :path => '../../'
+  pod 'FirebaseFirestore', :path => '../../'
+  pod 'FirebaseFirestoreInternal', :path => '../../'
+  pod 'FirebaseFunctions', :path => '../../'
+  pod 'FirebaseInAppMessaging', :path => '../../'
+  pod 'FirebaseMessaging', :path => '../../'
+  pod 'FirebaseSessions', :path => '../../'
+  pod 'FirebaseStorage', :path => '../../'
+  pod 'FirebasePerformance', :path => '../../'
+  pod 'FirebaseMLModelDownloader', :path => '../../'
+  pod 'Firebase', :path => '../../'
+end

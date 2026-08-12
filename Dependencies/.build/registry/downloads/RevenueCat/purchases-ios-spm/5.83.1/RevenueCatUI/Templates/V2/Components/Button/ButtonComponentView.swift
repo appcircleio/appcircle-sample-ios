@@ -1,0 +1,520 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  ButtonComponentView.swift
+//
+//  Created by Jay Shortway on 02/10/2024.
+
+import Foundation
+@_spi(Internal) import RevenueCat
+import SwiftUI
+
+#if !os(tvOS) // For Paywalls V2
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+struct ButtonComponentView: View {
+    @Environment(\.openURL) private var openURL
+    @Environment(\.openSheet) private var openSheet
+    @Environment(\.restoreInitiatedAction)
+    private var restoreInitiatedAction: RestoreInitiatedAction?
+    @Environment(\.offerCodeRedemptionInitiatedAction)
+    private var offerCodeRedemptionInitiatedAction: OfferCodeRedemptionInitiatedAction?
+    @State private var inAppBrowserURL: URL?
+    @State private var showCustomerCenter = false
+    @State private var offerCodeRedemptionSheet = false
+    @State private var showingWebPaywallLinkAlert = false
+
+    @EnvironmentObject
+    private var purchaseHandler: PurchaseHandler
+
+    @EnvironmentObject
+    private var packageContext: PackageContext
+
+    @EnvironmentObject
+    private var introOfferEligibilityContext: IntroOfferEligibilityContext
+
+    @EnvironmentObject
+    private var paywallPromoOfferCache: PaywallPromoOfferCache
+
+    @Environment(\.componentViewState)
+    private var componentViewState
+
+    @Environment(\.screenCondition)
+    private var screenCondition
+
+    @Environment(\.customPaywallVariables)
+    private var customVariables
+
+    @Environment(\.selectedPackageId)
+    private var selectedPackageId
+
+    @Environment(\.componentInteractionLogger) var componentInteractionLogger
+    @Environment(\.urlOpenedNotifier) private var urlOpenedNotifier
+    @Environment(\.workflowTriggerAction) private var workflowTriggerAction
+    @Environment(\.closeWorkflowAction) private var closeWorkflowAction
+    @Environment(\.workflowRenderingContext) private var workflowRenderingContext
+
+    private let viewModel: ButtonComponentViewModel
+    private let onDismiss: () -> Void
+
+    internal init(viewModel: ButtonComponentViewModel,
+                  onDismiss: @escaping () -> Void) {
+        self.viewModel = viewModel
+        self.onDismiss = onDismiss
+    }
+
+    /// Show activity indicator only if restore action in purchase handler
+    var showActivityIndicatorOverContent: Bool {
+        guard self.viewModel.isRestoreAction,
+                let actionType = self.purchaseHandler.actionTypeInProgress else {
+            return false
+        }
+
+        switch actionType {
+        case .purchase:
+            return false
+        case .restore, .pendingPurchaseContinuation:
+            return true
+        }
+    }
+
+    /// Disable for any type of purchase handler action
+    var shouldBeDisabled: Bool {
+        return self.viewModel.isRestoreAction && self.purchaseHandler.actionInProgress
+    }
+
+    var body: some View {
+        if !self.viewModel.hasUnknownAction,
+           self.viewModel.visible(
+               state: self.componentViewState,
+               condition: self.screenCondition,
+               isEligibleForIntroOffer: self.introOfferEligibilityContext.isEligible(
+                   package: self.packageContext.package
+               ),
+               isEligibleForPromoOffer: self.paywallPromoOfferCache.isMostLikelyEligible(
+                   for: self.packageContext.package
+               ),
+               selectedPackageId: self.selectedPackageId,
+               customVariables: self.customVariables
+           ) {
+            AsyncButton {
+                try await performAction()
+            } label: {
+                StackComponentView(
+                    viewModel: self.viewModel.stackViewModel,
+                    onDismiss: self.onDismiss,
+                    showActivityIndicatorOverContent: self.showActivityIndicatorOverContent
+                )
+            }
+            .withTransition(viewModel.component.transition)
+            .disabled(self.shouldBeDisabled)
+            .opacity(self.shouldBeDisabled ? 0.35 : 1.0)
+            .offset(x: self.workflowRenderingContext.isHeader ? -self.headerPageOffset : 0)
+            .opacity(self.workflowRenderingContext.isHeader ? self.headerButtonOpacity : 1)
+            #if canImport(SafariServices) && canImport(UIKit)
+            .sheet(isPresented: .isNotNil(self.$inAppBrowserURL)) {
+                let url = self.inAppBrowserURL!
+                SafariView(url: url)
+                    // Reported here rather than when the URL is assigned, so the listener only hears about
+                    // in-app browser opens that actually made it on screen.
+                    .onAppear { self.urlOpenedNotifier(url) }
+            }
+            #if os(iOS)
+            .applyIf(self.viewModel.opensCustomerCenter, apply: { view in
+                view.presentCustomerCenter(
+                    isPresented: self.$showCustomerCenter,
+                    purchaseHandler: self.purchaseHandler,
+                    onDismiss: {
+                        self.showCustomerCenter = false
+                    }
+                )
+            })
+            #endif
+            #endif
+        }
+    }
+
+    private var headerPageOffset: CGFloat {
+        return self.workflowRenderingContext.pageTransition.pageOffset
+    }
+
+    private var headerButtonOpacity: CGFloat {
+        return self.workflowRenderingContext.pageTransition.headerButtonOpacity
+    }
+
+    private func performAction() async throws {
+        if let id = viewModel.id,
+           let triggerWorkflow = workflowTriggerAction,
+           triggerWorkflow(id) {
+            return
+        }
+
+        // Intentionally track before branching so .unknown actions are surfaced as diagnostic telemetry.
+        // Events with componentValue == "unknown" should be excluded from product funnel analytics.
+        // Note: .workflowTrigger actions are intentionally not tracked — paywallComponentInteractionValue returns nil.
+        self.trackButtonComponentInteraction()
+
+        switch viewModel.action {
+        case .restorePurchases:
+            try await restorePurchases()
+        case .navigateTo(let destination):
+            navigateTo(destination: destination)
+        case .navigateBack:
+            onDismiss()
+        case .closeWorkflow:
+            if let closeWorkflowAction {
+                closeWorkflowAction()
+            } else {
+                Logger.warning(
+                    Strings.paywall_close_workflow_action_not_handled(componentName: self.viewModel.component.name)
+                )
+            }
+        case .workflowTrigger:
+            Logger.warning(
+                Strings.paywall_workflow_trigger_not_handled(componentName: self.viewModel.component.name)
+            )
+        case .unknown:
+            Logger.warning(
+                Strings.paywall_unknown_button_action_tracked_for_diagnostics(
+                    componentName: self.viewModel.component.name,
+                    actionValue: self.viewModel.action.paywallComponentInteractionValue
+                )
+            )
+        case .sheet(let sheet):
+            if let sheet, let sheetStackViewModel = self.viewModel.sheetStackViewModel {
+                let sheetViewModel = SheetViewModel(
+                    sheet: sheet,
+                    sheetStackViewModel: sheetStackViewModel
+                )
+                openSheet(sheetViewModel)
+            }
+        }
+    }
+
+    private func trackButtonComponentInteraction() {
+        guard let componentValue = self.viewModel.action.paywallComponentInteractionValue else { return }
+        self.componentInteractionLogger(.paywallNonPurchaseButtonAction(
+            componentName: self.viewModel.component.name,
+            componentValue: componentValue,
+            componentURL: self.viewModel.action.paywallComponentInteractionURL
+        ))
+    }
+
+    private func restorePurchases() async throws {
+        guard !self.purchaseHandler.actionInProgress else { return }
+
+        if let interceptor = self.restoreInitiatedAction {
+            Logger.debug(Strings.restore_purchases_gate_start)
+            let result = await self.purchaseHandler.withPendingPurchaseContinuation {
+                await withCheckedContinuation { continuation in
+                    interceptor(resume: ResumeAction { shouldProceed in
+                        Logger.debug(Strings.restore_purchases_gate_finish(with: shouldProceed))
+                        continuation.resume(returning: shouldProceed)
+                    })
+                }
+            }
+            guard result else { return }
+        }
+
+        Logger.debug(Strings.restoring_purchases)
+
+        let (customerInfo, success) = try await self.purchaseHandler.restorePurchases()
+        if success {
+            Logger.debug(Strings.restored_purchases)
+        } else {
+            Logger.debug(Strings.restore_purchases_with_empty_result)
+        }
+
+        self.purchaseHandler.setRestored(customerInfo, success: success)
+    }
+
+    private func navigateTo(destination: ButtonComponentViewModel.Destination) {
+        switch destination {
+        case .customerCenter:
+            self.showCustomerCenter = true
+        case .offerCodeRedemptionSheet:
+            Task {
+                await self.openCodeRedemptionSheet()
+            }
+        case .url(let url, let method),
+                .privacyPolicy(let url, let method),
+                .terms(let url, let method):
+            Browser.navigateTo(url: url,
+                               method: method,
+                               openURL: self.openURL,
+                               inAppBrowserURL: self.$inAppBrowserURL,
+                               onURLOpened: self.urlOpenedNotifier.callAsFunction)
+        case .unknown:
+            break
+        case .webPaywallLink(url: let url, method: let method):
+            self.openWebPaywallLink(url: url, method: method)
+        }
+    }
+
+    private func openCodeRedemptionSheet() async {
+        // Check if there's an offer code redemption interceptor
+        if let interceptor = self.offerCodeRedemptionInitiatedAction {
+            // Wait for the interceptor to call resume before proceeding
+            let result = await self.purchaseHandler.withPendingPurchaseContinuation {
+                await withCheckedContinuation { continuation in
+                    interceptor(resume: ResumeAction { shouldProceed in
+                        continuation.resume(returning: shouldProceed)
+                    })
+                }
+            }
+            guard result else { return }
+        }
+
+#if os(iOS) && !targetEnvironment(macCatalyst)
+        // Call the method only if available
+        Purchases.shared.presentCodeRedemptionSheet()
+#else
+        // Handle the case for unsupported platforms (e.g., watchOS, macOS)
+        print("presentCodeRedemptionSheet is unavailable on this platform")
+#endif
+    }
+
+    private func openWebPaywallLink(url: URL, method: PaywallComponent.ButtonComponent.URLMethod) {
+        self.purchaseHandler.invalidateCustomerInfoCache()
+#if os(watchOS)
+        // watchOS doesn't support openURL with a completion handler, so we're just opening the URL.
+        openURL(url)
+#else
+        openURL(url) { success in
+            if success {
+                Logger.debug(Strings.successfully_opened_url_external_browser(url.absoluteString))
+            } else {
+                Logger.error(Strings.failed_to_open_url_external_browser(url.absoluteString))
+            }
+        }
+#endif
+        self.purchaseHandler.signalWebCheckoutOpened()
+        onDismiss()
+    }
+}
+
+#if os(iOS)
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+private extension ButtonComponentViewModel {
+
+    var opensCustomerCenter: Bool {
+        guard case .navigateTo(destination: .customerCenter) = self.action else {
+            return false
+        }
+
+        return true
+    }
+
+}
+#endif
+
+#if DEBUG
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+struct ButtonComponentView_Previews: PreviewProvider {
+
+    static var previews: some View {
+        // swiftlint:disable force_try
+        let localizationProvider = LocalizationProvider(
+            locale: Locale.current,
+            localizedStrings: [
+                "buttonText": PaywallComponentsData.LocalizationData.string("Do something")
+            ]
+        )
+        let offering = Offering(
+            identifier: "",
+            serverDescription: "",
+            availablePackages: [],
+            webCheckoutUrl: nil
+        )
+
+        // Default: button renders normally
+        VStack {
+            ButtonComponentView(
+                viewModel: try! .init(
+                    component: .init(
+                        action: .navigateBack,
+                        stack: .init(
+                            components: [
+                                PaywallComponent.text(
+                                    PaywallComponent.TextComponent(
+                                        text: "buttonText",
+                                        color: .init(light: .hex("#000000"))
+                                    )
+                                )
+                            ],
+                            backgroundColor: nil
+                        )
+                    ),
+                    localizationProvider: localizationProvider,
+                    offering: offering,
+                    colorScheme: .light
+                ),
+                onDismiss: { }
+            )
+        }
+        .previewRequiredPaywallsV2Properties()
+        .environmentObject(PurchaseHandler.default())
+        .previewLayout(.fixed(width: 400, height: 100))
+        .previewDisplayName("Default")
+
+        // visible=true vs visible=false side by side
+        VStack(spacing: 16) {
+            HStack {
+                Text("visible=true →").font(.caption).frame(width: 120, alignment: .trailing)
+                ButtonComponentView(
+                    viewModel: try! .init(
+                        component: .init(
+                            visible: true,
+                            action: .navigateBack,
+                            stack: .init(
+                                components: [
+                                    PaywallComponent.text(
+                                        PaywallComponent.TextComponent(
+                                            text: "buttonText",
+                                            color: .init(light: .hex("#000000"))
+                                        )
+                                    )
+                                ],
+                                backgroundColor: nil
+                            )
+                        ),
+                        localizationProvider: localizationProvider,
+                        offering: offering,
+                        colorScheme: .light
+                    ),
+                    onDismiss: { }
+                )
+            }
+            HStack {
+                Text("visible=false →").font(.caption).frame(width: 120, alignment: .trailing)
+                ButtonComponentView(
+                    viewModel: try! .init(
+                        component: .init(
+                            visible: false,
+                            action: .navigateBack,
+                            stack: .init(
+                                components: [
+                                    PaywallComponent.text(
+                                        PaywallComponent.TextComponent(
+                                            text: "buttonText",
+                                            color: .init(light: .hex("#000000"))
+                                        )
+                                    )
+                                ],
+                                backgroundColor: nil
+                            )
+                        ),
+                        localizationProvider: localizationProvider,
+                        offering: offering,
+                        colorScheme: .light
+                    ),
+                    onDismiss: { }
+                )
+                Spacer()
+                Text("(hidden)").font(.caption).foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .previewRequiredPaywallsV2Properties()
+        .environmentObject(PurchaseHandler.default())
+        .previewLayout(.fixed(width: 400, height: 120))
+        .previewDisplayName("visible=true vs visible=false")
+
+        // Override: hide when selected — show default (visible) vs selected (hidden)
+        let selectedOverrideComponent = PaywallComponent.ButtonComponent(
+            action: .navigateBack,
+            stack: .init(
+                components: [
+                    PaywallComponent.text(
+                        PaywallComponent.TextComponent(
+                            text: "buttonText",
+                            color: .init(light: .hex("#000000"))
+                        )
+                    )
+                ],
+                backgroundColor: nil
+            ),
+            overrides: [
+                .init(conditions: [.selected], properties: .init(visible: false))
+            ]
+        )
+        VStack(spacing: 16) {
+            HStack {
+                Text("state=default →").font(.caption).frame(width: 120, alignment: .trailing)
+                ButtonComponentView(
+                    viewModel: try! .init(
+                        component: selectedOverrideComponent,
+                        localizationProvider: localizationProvider,
+                        offering: offering,
+                        colorScheme: .light
+                    ),
+                    onDismiss: { }
+                )
+                .environment(\.componentViewState, .default)
+            }
+            HStack {
+                Text("state=selected →").font(.caption).frame(width: 120, alignment: .trailing)
+                ButtonComponentView(
+                    viewModel: try! .init(
+                        component: selectedOverrideComponent,
+                        localizationProvider: localizationProvider,
+                        offering: offering,
+                        colorScheme: .light
+                    ),
+                    onDismiss: { }
+                )
+                .environment(\.componentViewState, .selected)
+                Spacer()
+                Text("(hidden)").font(.caption).foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .previewRequiredPaywallsV2Properties()
+        .environmentObject(PurchaseHandler.default())
+        .previewLayout(.fixed(width: 400, height: 120))
+        .previewDisplayName("Override: hide when selected")
+        // swiftlint:enable force_try
+    }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+fileprivate extension ButtonComponentViewModel {
+
+    convenience init(
+        component: PaywallComponent.ButtonComponent,
+        localizationProvider: LocalizationProvider,
+        offering: Offering,
+        colorScheme: ColorScheme
+    ) throws {
+        let factory = ViewModelFactory()
+        let stackViewModel = try factory.toStackViewModel(
+            component: component.stack,
+            packageValidator: factory.packageValidator,
+            purchaseButtonCollector: nil,
+            localizationProvider: localizationProvider,
+            uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
+            offering: offering,
+            colorScheme: colorScheme
+        )
+
+        try self.init(
+            component: component,
+            localizationProvider: localizationProvider,
+            offering: offering,
+            stackViewModel: stackViewModel,
+            uiConfigProvider: .init(uiConfig: PreviewUIConfig.make())
+        )
+    }
+
+}
+
+#endif
+
+#endif

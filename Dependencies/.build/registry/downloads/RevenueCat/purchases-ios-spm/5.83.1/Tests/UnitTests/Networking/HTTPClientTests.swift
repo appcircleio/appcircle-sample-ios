@@ -1,0 +1,4923 @@
+//
+//  HTTPClientTests.swift
+//  PurchasesTests
+//
+//  Created by RevenueCat.
+//  Copyright © 2019 RevenueCat. All rights reserved.
+//
+
+import Nimble
+import OHHTTPStubs
+import OHHTTPStubsSwift
+import XCTest
+
+@testable @_spi(Internal) import RevenueCat
+
+/// Generic `ETagManager` type allows subclasses to use either `MockETagManager`
+/// or the real `ETagManager`.
+/// Generic `TimeoutManager` type allows subclasses to use either `MockHTTPRequestTimeoutManager`
+/// or the real `HTTPRequestTimeoutManager`.
+class BaseHTTPClientTests<ETag: ETagManager, TimeoutManager: HTTPRequestTimeoutManagerType>: TestCase {
+
+    typealias EmptyResponse = VerifiedHTTPResponse<HTTPEmptyResponseBody>.Result
+    typealias DataResponse = VerifiedHTTPResponse<Data>.Result
+    typealias BodyWithDateResponse = VerifiedHTTPResponse<BodyWithDate>.Result
+
+    var systemInfo: MockSystemInfo!
+    var signing: MockSigning!
+    var client: HTTPClient!
+    var eTagManager: ETag!
+    var diagnosticsTracker: DiagnosticsTrackerType?
+    var operationDispatcher: OperationDispatcher!
+    var dateProvider: MockCurrentDateProvider!
+    var timeoutManager: TimeoutManager!
+
+    // Something very specific on purpose to make sure we can differentiate it in tests from adjusted timeouts
+    let defaultRequestTimeout: TimeInterval = 3.21
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+
+        #if os(watchOS)
+        // See https://github.com/AliSoftware/OHHTTPStubs/issues/287
+        try XCTSkipIf(true, "OHHTTPStubs does not currently support watchOS")
+        #endif
+
+        self.systemInfo = MockSystemInfo(finishTransactions: true)
+        self.signing = MockSigning()
+        if #available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *) {
+            self.diagnosticsTracker = MockDiagnosticsTracker()
+        } else {
+            self.diagnosticsTracker = nil
+        }
+        self.operationDispatcher = OperationDispatcher()
+        MockDNSChecker.resetData()
+
+        self.dateProvider = MockCurrentDateProvider()
+
+        // Subclasses must initialize `self.eTagManager` and `self.timeoutManager` before this
+        self.client = self.createClient()
+    }
+
+    override func tearDown() {
+        HTTPStubs.removeAllStubs()
+
+        super.tearDown()
+    }
+
+    final func createClient() -> HTTPClient {
+        return self.createClient(self.systemInfo)
+    }
+
+    fileprivate final func createClient(
+        _ systemInfo: SystemInfo,
+        operationDispatcher: OperationDispatcher = MockOperationDispatcher(),
+        apiSourceProvider: RemoteConfigSourceProviderType? = nil,
+        sourceHealthChecker: SourceHealthCheckerType = SourceHealthChecker()
+    ) -> HTTPClient {
+        // The real `SourceHealthChecker` default keeps health probes visible to OHHTTPStubs; tests
+        // that need a fixed health result inject a `MockSourceHealthChecker` instead.
+        let apiSourceFailover = apiSourceProvider.map {
+            APISourceFailover(usesRemoteConfigAPISources:
+                                systemInfo.dangerousSettings.internalSettings.usesRemoteConfigAPISources,
+                              sourceProvider: $0,
+                              healthChecker: sourceHealthChecker)
+        }
+        return HTTPClient(systemInfo: systemInfo,
+                          eTagManager: self.eTagManager,
+                          signing: self.signing,
+                          diagnosticsTracker: self.diagnosticsTracker,
+                          dnsChecker: MockDNSChecker.self,
+                          networkTimeout: .custom(defaultRequestTimeout),
+                          operationDispatcher: operationDispatcher,
+                          apiSourceFailover: apiSourceFailover,
+                          timeoutManager: timeoutManager)
+    }
+}
+
+final class HTTPClientTests: BaseHTTPClientTests<MockETagManager, HTTPRequestTimeoutManager> {
+
+    override func setUpWithError() throws {
+        self.eTagManager = MockETagManager()
+        self.timeoutManager = HTTPRequestTimeoutManager(
+            networkTimeout: .default,
+            dateProvider: MockCurrentDateProvider()
+        )
+
+        try super.setUpWithError()
+    }
+
+    func testUsesTheCorrectHost() throws {
+        let hostCorrect: Atomic<Bool> = false
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testUsesAPISourceHostFromProviderWhenSet() throws {
+        let apiSourceHost = "custom-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(host: apiSourceHost)
+        )
+
+        let hostCorrect: Atomic<Bool> = false
+        stub(condition: isHost(apiSourceHost)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        waitUntil { completion in
+            client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testDoesNotUseAPISourceHostWhenSettingDisabled() throws {
+        // `usesRemoteConfigAPISources` is disabled by default (`self.systemInfo`), so an injected provider
+        // must be ignored and requests target `serverHostURL`.
+        let client = self.createClient(
+            self.systemInfo,
+            apiSourceProvider: Self.apiSourceProvider(host: "custom-api.rc-test.com")
+        )
+
+        let hostCorrect: Atomic<Bool> = false
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        waitUntil { completion in
+            client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testUsesServerHostURLWhenNoAPISourceProvider() throws {
+        // No provider injected: behavior is unchanged and requests target `serverHostURL`.
+        let hostCorrect: Atomic<Bool> = false
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testProxyURLTakesPrecedenceOverAPISource() throws {
+        let proxyURL = try XCTUnwrap(URL(string: "https://proxy.rc-test.com"))
+        SystemInfo.proxyURL = proxyURL
+        defer { SystemInfo.proxyURL = nil }
+
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(host: "custom-api.rc-test.com")
+        )
+
+        let hostCorrect: Atomic<Bool> = false
+        stub(condition: isHost("proxy.rc-test.com")) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        waitUntil { completion in
+            client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testOverriddenAPIBaseURLPinsHostAndBypassesAPISource() throws {
+        let overriddenHost = "pinned-api.rc-test.com"
+        SystemInfo.apiBaseURL = try XCTUnwrap(URL(string: "https://\(overriddenHost)"))
+        defer { SystemInfo.apiBaseURL = SystemInfo.defaultApiBaseURL }
+
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(host: "custom-api.rc-test.com")
+        )
+
+        let hostCorrect: Atomic<Bool> = false
+        stub(condition: isHost(overriddenHost)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        waitUntil { completion in
+            client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testETagRetryTargetsTheSameAPISourceHost() throws {
+        let apiSourceHost = "custom-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(host: apiSourceHost)
+        )
+
+        // Count requests reaching the API source host. If the ETag refresh retry ignored the API source and
+        // fell back to the default host, this host would only be hit once (and the unstubbed default host
+        // request would not succeed).
+        let apiSourceRequests: Atomic<Int> = .init(0)
+        stub(condition: isHost(apiSourceHost)) { [eTagManager = self.eTagManager!] _ in
+            defer { apiSourceRequests.value += 1 }
+            // On the retry, let the ETag manager return a result so the request completes.
+            if apiSourceRequests.value > 0 {
+                eTagManager.shouldReturnResultFromBackend = true
+            }
+            return .emptySuccessResponse()
+        }
+
+        // First attempt: an ETag cache miss (nil result) forces a refresh retry.
+        self.eTagManager.shouldReturnResultFromBackend = false
+        self.eTagManager.stubbedHTTPResultFromCacheOrBackendResult = nil
+
+        let result: DataResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beSuccess())
+        expect(apiSourceRequests.value) == 2
+    }
+
+    // MARK: - API source failover
+
+    private static let healthCheckPath = "/v1/health/connectivity"
+
+    /// Stubs `host`, counting and answering its health probes and its regular requests separately.
+    private func stubHost(
+        _ host: String,
+        healthStatusCode: Int32 = 200,
+        response: @escaping () -> HTTPStubsResponse
+    ) -> (healthChecks: Atomic<Int>, requests: Atomic<Int>) {
+        let healthChecks: Atomic<Int> = .init(0)
+        let requests: Atomic<Int> = .init(0)
+        stub(condition: isHost(host) && isPath(Self.healthCheckPath)) { _ in
+            healthChecks.modify { $0 += 1 }
+            return HTTPStubsResponse(data: Data(), statusCode: healthStatusCode, headers: nil)
+        }
+        stub(condition: isHost(host) && !isPath(Self.healthCheckPath)) { _ in
+            requests.modify { $0 += 1 }
+            return response()
+        }
+        return (healthChecks, requests)
+    }
+
+    func testFallsBackToNextAPISourceWhenCurrentSourceFails() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 500) { .serverDownResponse() }
+        let second = self.stubHost(secondHost) { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beSuccess())
+        expect(first.requests.value) == 1
+        expect(first.healthChecks.value) == 1
+        expect(second.requests.value) == 1
+    }
+
+    func testDoesNotFailOverWhenSourceIsHealthyDespiteServerError() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 200) { .serverDownResponse() }
+        let second = self.stubHost(secondHost) { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        // The source is healthy, so the request failure was not a source outage: the original
+        // error surfaces without switching hosts.
+        expect(result).to(beFailure())
+        expect(first.requests.value) == 1
+        expect(first.healthChecks.value) == 1
+        expect(second.requests.value) == 0
+    }
+
+    func test4xxDoesNotFailOverAndDoesNotHealthCheck() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost) {
+            HTTPStubsResponse(data: Data(), statusCode: 400, headers: nil)
+        }
+        let second = self.stubHost(secondHost) { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beFailure())
+        expect(first.requests.value) == 1
+        expect(first.healthChecks.value) == 0
+        expect(second.requests.value) == 0
+    }
+
+    func testFailsOverOnConnectionFailureWhenHealthCheckFails() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 500) {
+            HTTPStubsResponse(error: URLError(.cannotConnectToHost))
+        }
+        let second = self.stubHost(secondHost) { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beSuccess())
+        expect(first.requests.value) == 1
+        expect(second.requests.value) == 1
+    }
+
+    func testDoesNotFailOverOnConnectionFailureWhenSourceIsHealthy() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 200) {
+            HTTPStubsResponse(error: URLError(.cannotConnectToHost))
+        }
+        let second = self.stubHost(secondHost) { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beFailure())
+        expect(first.healthChecks.value) == 1
+        expect(second.requests.value) == 0
+    }
+
+    func testDoesNotHealthCheckOrFailOverOnDeviceConnectivityError() {
+        // Unlike Android, iOS can tell a device-connectivity failure apart from a host outage using
+        // the original request's URLError code. Switching hosts can't fix a device without
+        // connectivity, so the health check endpoint must not even be probed.
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost) {
+            HTTPStubsResponse(error: URLError(.notConnectedToInternet))
+        }
+        let second = self.stubHost(secondHost) { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beFailure())
+        expect(first.requests.value) == 1
+        expect(first.healthChecks.value) == 0
+        expect(second.requests.value) == 0
+    }
+
+    func testSurfacesOriginalErrorOnceSourcesAreExhausted() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 500) { .serverDownResponse() }
+        let second = self.stubHost(secondHost, healthStatusCode: 500) { .serverDownResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beFailure())
+        expect(first.requests.value) == 1
+        expect(second.requests.value) == 1
+    }
+
+    func testUsesStaticFallbackHostOnceSourcesAreExhausted() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 500) { .serverDownResponse() }
+        let second = self.stubHost(secondHost, healthStatusCode: 500) { .serverDownResponse() }
+        let fallback = self.stubHost("api-production.8-lives-cat.io") { .emptySuccessResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPathWithFallbacks)) { completion($0) }
+        }
+
+        // The static per-endpoint fallback host stays the last resort once every source declined.
+        expect(result).to(beSuccess())
+        expect(first.requests.value) == 1
+        expect(second.requests.value) == 1
+        expect(fallback.requests.value) == 1
+    }
+
+    func testPostRetriesWithItsBodyOnTheNextAPISource() throws {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let body = AnyEncodableRequestBody(["arg": "value"])
+        let bodyData = try JSONEncoder.default.encode(body)
+
+        let first = self.stubHost(firstHost, healthStatusCode: 500) { .serverDownResponse() }
+        let secondHostBodyCorrect: Atomic<Bool> = false
+        stub(condition: isHost(secondHost) && hasBody(bodyData)) { _ in
+            secondHostBodyCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .post(body), path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beSuccess())
+        expect(first.requests.value) == 1
+        expect(secondHostBodyCorrect.value) == true
+    }
+
+    func testCapsAPISourceAttemptsWhenTheListKeepsRearming() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        // A provider that re-arms its exhausted list on every read, simulating a topic rebuild or
+        // interval restart happening while a request walks the list.
+        let provider = AlwaysRearmingSourceProvider(
+            wrapping: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: provider
+        )
+
+        let first = self.stubHost(firstHost, healthStatusCode: 500) { .serverDownResponse() }
+        let second = self.stubHost(secondHost, healthStatusCode: 500) { .serverDownResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beFailure())
+        expect(first.requests.value + second.requests.value) == 5
+    }
+
+    func testRequestQueuedDuringAHealthCheckRunsAfterTheFailoverRetry() {
+        // While the probe is in flight the serial pipeline stays stalled, and the failover retry is
+        // requeued at the front: a request enqueued during the probe must run only after the retry.
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(hosts: [firstHost, secondHost])
+        )
+
+        let endpointHits: Atomic<[String]> = .init([])
+
+        stub(condition: isHost(firstHost) && isPath(Self.healthCheckPath)) { _ in
+            HTTPStubsResponse(data: Data(), statusCode: 503, headers: nil)
+                .responseTime(0.3)
+        }
+        stub(condition: isHost(firstHost) && !isPath(Self.healthCheckPath)) { request in
+            endpointHits.modify { $0.append("first:\(request.url?.path ?? "")") }
+            return .serverDownResponse()
+        }
+        stub(condition: isHost(secondHost) && !isPath(Self.healthCheckPath)) { request in
+            endpointHits.modify { $0.append("second:\(request.url?.path ?? "")") }
+            return .emptySuccessResponse()
+        }
+
+        let firstRequestPath = HTTPRequest.Path.mockPath.relativePath
+        let queuedRequestPath = HTTPRequest.Path.getCustomerInfo(appUserID: "queued-user").relativePath
+
+        let firstRequestCompleted: Atomic<Bool> = false
+        client.perform(.init(method: .get, path: .mockPath)) { (_: EmptyResponse) in
+            firstRequestCompleted.value = true
+        }
+        // Enqueued while the first request's attempt/probe is in flight.
+        let queuedResult: EmptyResponse? = waitUntilValue(timeout: .seconds(5)) { completion in
+            client.perform(.init(method: .get, path: .getCustomerInfo(appUserID: "queued-user"))) {
+                completion($0)
+            }
+        }
+
+        expect(queuedResult).to(beSuccess())
+        expect(firstRequestCompleted.value) == true
+        expect(endpointHits.value) == [
+            "first:\(firstRequestPath)",
+            "second:\(firstRequestPath)",
+            "second:\(queuedRequestPath)"
+        ]
+    }
+
+    func testRecordsAPISourceTimeoutBeforeHealthCheckCompletes() {
+        let host = "first-api.rc-test.com"
+        let healthCheckStarted = self.expectation(description: "Health check started")
+        let healthChecker = DelayedSourceHealthChecker(checkStarted: healthCheckStarted)
+        let client = self.createClient(
+            self.systemInfoUsingAPISources(),
+            apiSourceProvider: Self.apiSourceProvider(host: host),
+            sourceHealthChecker: healthChecker
+        )
+
+        stub(condition: isHost(host)) { _ in .timeoutResponse() }
+
+        let requestCompleted = self.expectation(description: "Request completed")
+        client.perform(.init(method: .get, path: .mockPath)) { (_: EmptyResponse) in
+            requestCompleted.fulfill()
+        }
+
+        self.wait(for: [healthCheckStarted], timeout: 1)
+
+        XCTAssertEqual(
+            self.timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: false,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceNoFallbackReduced
+        )
+
+        healthChecker.complete(isHealthy: false)
+        self.wait(for: [requestCompleted], timeout: 1)
+    }
+
+    func testPassesHeaders() {
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("Authorization")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testRequestWithNoNonceDoesNotContainNonceHeader() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let headers: [String: String]? = waitUntilValue { completion in
+            stub(condition: isPath(request.path)) { request in
+                completion(request.allHTTPHeaderFields)
+                return .emptySuccessResponse()
+            }
+
+            self.client.perform(request) { (_: EmptyResponse) in }
+        }
+
+        expect(headers).toNot(beEmpty())
+        expect(headers?.keys).toNot(contain(HTTPClient.RequestHeader.nonce.rawValue))
+    }
+
+    func testGetRequestDoesNotContainPostParametersHeader() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let headers: [String: String]? = waitUntilValue { completion in
+            stub(condition: isPath(request.path)) { request in
+                completion(request.allHTTPHeaderFields)
+                return .emptySuccessResponse()
+            }
+
+            self.client.perform(request) { (_: EmptyResponse) in }
+        }
+
+        expect(headers).toNot(beEmpty())
+        expect(headers?.keys).toNot(contain(HTTPClient.RequestHeader.postParameters.rawValue))
+    }
+
+    func testPostRequestWithDisabledSignatureVerificationDoesNotContainPostParametersHeader() {
+        let body = BodyWithSignature(key1: "a", key2: "b")
+
+        let request = HTTPRequest(method: .post(body), path: .postReceiptData)
+
+        let headers: [String: String]? = waitUntilValue { completion in
+            stub(condition: isPath(request.path)) { request in
+                completion(request.allHTTPHeaderFields)
+                return .emptySuccessResponse()
+            }
+
+            self.client.perform(request) { (_: EmptyResponse) in }
+        }
+
+        expect(headers).toNot(beEmpty())
+        expect(headers?.keys).toNot(contain(HTTPClient.RequestHeader.postParameters.rawValue))
+    }
+
+    func testRequestIncludesNonceInBase64() {
+        let request = HTTPRequest(method: .get, path: .mockPath, nonce: "1234567890ab".asData)
+
+        let headers: [String: String]? = waitUntilValue { completion in
+            stub(condition: isPath(request.path)) { request in
+                completion(request.allHTTPHeaderFields)
+                return .emptySuccessResponse()
+            }
+
+            self.client.perform(request) { (_: EmptyResponse) in }
+        }
+
+        expect(headers).toNot(beEmpty())
+        expect(headers?.keys).to(contain(HTTPClient.RequestHeader.nonce.rawValue))
+        expect(headers?[HTTPClient.RequestHeader.nonce.rawValue]) == "MTIzNDU2Nzg5MGFi"
+    }
+
+    func testAlwaysSetsContentTypeHeader() {
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("content-type", value: "application/json")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAlwaysPassesPlatformHeader() {
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Platform", value: SystemInfo.platformHeader)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAlwaysPassesVersionHeader() {
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Version", value: Purchases.frameworkVersion)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAlwaysPassesPlatformVersion() {
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Platform-Version", value: ProcessInfo().operatingSystemVersionString)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAlwaysPassesIsSandboxWhenEnabled() {
+        let headerName = "X-Is-Sandbox"
+        self.systemInfo.stubbedIsSandbox = true
+
+        let header: Atomic<String?> = nil
+
+        stub(condition: hasHeaderNamed(headerName)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == "true"
+    }
+
+    func testAlwaysPassesIsSandboxWhenDisabled() {
+        let headerName = "X-Is-Sandbox"
+        self.systemInfo.stubbedIsSandbox = false
+
+        let header: Atomic<String?> = nil
+
+        stub(condition: hasHeaderNamed(headerName)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == "false"
+    }
+
+    func testAlwaysPassesIsDebugBuildHeaderInReleaseMode() {
+        let headerName = "X-Is-Debug-Build"
+        self.systemInfo.stubbedIsDebugBuild = false // "release" mode
+
+        let header: Atomic<String?> = nil
+
+        stub(condition: hasHeaderNamed(headerName)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == "false"
+    }
+
+    func testAlwaysPassesIsDebugBuildHeaderInDebugMode() {
+        let headerName = "X-Is-Debug-Build"
+        self.systemInfo.stubbedIsDebugBuild = true
+
+        let header: Atomic<String?> = nil
+
+        stub(condition: hasHeaderNamed(headerName)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == "true"
+    }
+
+    func testAlwaysPassesIsBackgroundedHeader() {
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Is-Backgrounded")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testRequestWithStorefrontSendsHeader() {
+        let headerName = "X-Storefront"
+        self.systemInfo.stubbedStorefront = MockStorefront(countryCode: "USA")
+
+        let header: Atomic<String?> = nil
+
+        stub(condition: hasHeaderNamed(headerName)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == "USA"
+    }
+
+    func testRequestsWithoutStorefrontDoNotSendHeader() {
+        let headerName = "X-Storefront"
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        self.systemInfo.stubbedStorefront = nil
+
+        let header: Atomic<(value: String?, set: Bool)> = .init((nil, false))
+
+        stub(condition: isPath(request.path)) { request in
+            header.value = (value: request.value(forHTTPHeaderField: headerName), set: true)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == (value: nil, set: true)
+    }
+
+    func testCallsTheGivenPath() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let pathHit: Atomic<Bool> = false
+
+        stub(condition: isPath(request.path)) { _ in
+            pathHit.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(pathHit.value) == true
+    }
+
+    func testSendsBodyData() throws {
+        let body = AnyEncodableRequestBody(["arg": "value"])
+        let pathHit: Atomic<Bool> = false
+
+        let bodyData = try JSONEncoder.default.encode(body)
+
+        stub(condition: hasBody(bodyData)) { _ in
+            pathHit.value = true
+            return .emptySuccessResponse()
+        }
+        let request = HTTPRequest(method: .post(body), path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(pathHit.value) == true
+    }
+
+    func testCallsCompletionHandlerWhenFinished() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        stub(condition: isPath(request.path)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in
+                completion()
+            }
+        }
+    }
+
+    func testHandlesRealErrorConditions() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: nil)
+
+        stub(condition: isPath(request.path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = error
+            return response
+        }
+        let receivedError = waitUntilValue { completion in
+            self.client.perform(request) { (result: EmptyResponse) in
+                completion(result.error)
+            }
+        }
+
+        expect(receivedError).toNot(beNil())
+        expect(receivedError?.isServerDown) == false
+
+        switch receivedError {
+        case let .networkError(actualError, _):
+            expect(actualError.domain) == error.domain
+            expect(actualError.code) == error.code
+        default:
+            fail("Unexpected error: \(String(describing: receivedError))")
+        }
+    }
+
+    func testServerSide400s() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let errorCode = HTTPStatusCode.invalidRequest.rawValue + Int.random(in: 0..<50)
+
+        stub(condition: isPath(request.path)) { _ in
+            let json = "{\"code\": 7101, \"message\": \"something is broken up in the cloud\"}"
+            return HTTPStubsResponse(
+                data: json.data(using: String.Encoding.utf8)!,
+                statusCode: Int32(errorCode),
+                headers: [
+                    HTTPClient.ResponseHeader.contentType.rawValue: "application/json"
+                ]
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beFailure())
+
+        let error = try XCTUnwrap(result?.error)
+        expect(error) == .errorResponse(
+            .init(code: .storeProblem,
+                  originalCode: 7101,
+                  message: "something is broken up in the cloud"),
+            HTTPStatusCode(rawValue: errorCode)
+        )
+        expect(error.isServerDown) == false
+
+        expect(self.signing.requests).to(beEmpty())
+    }
+
+    func testServerSide500sWithErrorResponse() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let errorCode = 500 + Int.random(in: 0..<50)
+
+        stub(condition: isPath(request.path)) { _ in
+            let json = "{\"code\": 5000,\"message\": \"something is broken up in the cloud\"}"
+            return HTTPStubsResponse(
+                data: json.asData,
+                statusCode: Int32(errorCode),
+                headers: [
+                    HTTPClient.ResponseHeader.contentType.rawValue: "application/json"
+                ]
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beFailure())
+
+        let error = try XCTUnwrap(result?.error)
+        expect(error) == .errorResponse(
+            .init(code: .unknownBackendError,
+                  originalCode: 5000,
+                  message: "something is broken up in the cloud"),
+            HTTPStatusCode(rawValue: errorCode)
+        )
+        expect(error.isServerDown) == true
+
+        expect(self.signing.requests).to(beEmpty())
+    }
+
+    func testServerSide500sWithCharsetContentType() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let errorCode = 500 + Int.random(in: 0..<50)
+
+        stub(condition: isPath(request.path)) { _ in
+            let json = "{\"code\": 5000,\"message\": \"something is broken up in the cloud\"}"
+            return HTTPStubsResponse(
+                data: json.asData,
+                statusCode: Int32(errorCode),
+                headers: [
+                    HTTPClient.ResponseHeader.contentType.rawValue: "application/json;charset=utf8"
+                ]
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).to(beFailure())
+        let error = try XCTUnwrap(result?.error)
+
+        expect(error) == .errorResponse(
+            .init(code: .unknownBackendError,
+                  originalCode: 5000,
+                  message: "something is broken up in the cloud"),
+            HTTPStatusCode(rawValue: errorCode)
+        )
+        expect(error.isServerDown) == true
+    }
+
+    func testServerSide500sWithUnknownBody() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let errorCode = 500 + Int.random(in: 0..<50)
+
+        stub(condition: isPath(request.path)) { _ in
+            let json = "The server is broken"
+            return HTTPStubsResponse(
+                data: json.asData,
+                statusCode: Int32(errorCode),
+                headers: nil
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beFailure())
+
+        let error = try XCTUnwrap(result?.error)
+        expect(error) == .errorResponse(
+            .init(code: .unknownError,
+                  originalCode: BackendErrorCode.unknownError.rawValue,
+                  message: nil),
+            HTTPStatusCode(rawValue: errorCode)
+        )
+        expect(error.isServerDown) == true
+
+        expect(self.signing.requests).to(beEmpty())
+
+        self.logger.verifyMessageWasNotLogged("Couldn't decode data from json")
+    }
+
+    func testInvalidJSONAsDataDoesNotFail() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let statusCode = HTTPStatusCode.success
+        let data = "{this is not JSON.csdsd".data(using: String.Encoding.utf8)!
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(
+                data: data,
+                statusCode: Int32(statusCode.rawValue),
+                headers: nil
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.body) == data
+    }
+
+    func testParseError() throws {
+        struct CustomResponse: Decodable, HTTPResponseBody {
+            let data: String
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let errorCode = HTTPStatusCode.success.rawValue
+
+        stub(condition: isPath(request.path)) { _ in
+            let json = "{this is not JSON.csdsd"
+            return HTTPStubsResponse(
+                data: json.data(using: String.Encoding.utf8)!,
+                statusCode: Int32(errorCode),
+                headers: nil
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: VerifiedHTTPResponse<CustomResponse>.Result) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beFailure())
+
+        let error = try XCTUnwrap(result?.error)
+        switch error {
+        case .decoding:
+            break // correct error
+
+        default:
+            fail("Invalid error: \(error)")
+        }
+    }
+
+    func testServerSide200s() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let responseData = "{\"message\": \"something is great up in the cloud\"}".asData
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(data: responseData,
+                                     statusCode: .success,
+                                     headers: nil)
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.body) == responseData
+        self.logger.verifyMessageWasNotLogged("Queued request GET /v1/subscribers/identify for retry in 0.0 seconds.")
+    }
+
+    func testNoContentResponseBodyDataConvertsNilToEmptyData() {
+        expect(HTTPClient.responseBodyData(statusCode: .noContent, data: nil)) == Data()
+    }
+
+    func testNotModifiedResponseBodyDataIsNil() {
+        expect(HTTPClient.responseBodyData(statusCode: .notModified, data: Data())) == nil
+    }
+
+    func testSuccessfulResponseBodyDataPreservesNilData() {
+        expect(HTTPClient.responseBodyData(statusCode: .success, data: nil)).to(beNil())
+    }
+
+    func testServerSide200WithETagInRequest() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let responseData = "{\"message\": \"something is great up in the cloud\"}".asData
+        let eTag = "etag"
+        let eTagValidationTime = Date(timeIntervalSince1970: 1234567)
+
+        self.eTagManager.stubResponseEtag(eTag, validationTime: eTagValidationTime)
+
+        stub(condition: isPath(request.path)) { request in
+            expect(request.allHTTPHeaderFields?[ETagManager.eTagRequestHeader.rawValue]) == eTag
+            expect(request.allHTTPHeaderFields?[ETagManager.lastRefreshTimeRequestHeader.rawValue])
+            == eTagValidationTime.millisecondsSince1970.description
+
+            return HTTPStubsResponse(data: responseData,
+                                     statusCode: .success,
+                                     headers: nil)
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.body) == responseData
+
+        expect(self.eTagManager.invokedHTTPResultFromCacheOrBackend) == true
+        expect(self.eTagManager.invokedHTTPResultFromCacheOrBackendCount) == 1
+    }
+
+    func testRemoteConfigFallbackSendsETagHeaders() {
+        let path = HTTPRequest.FallbackPath.remoteConfig(domain: "app")
+        let request = HTTPRequest(method: .get, path: path)
+        let responseData = "{\"domain\":\"app\",\"manifest\":\"test\",\"active_topics\":[],\"topics\":{}}".asData
+        let eTag = "fallback-etag"
+        let eTagValidationTime = Date(timeIntervalSince1970: 1234567)
+
+        self.eTagManager.stubResponseEtag(eTag, validationTime: eTagValidationTime)
+
+        stub(condition: isPath(path)) { request in
+            expect(request.allHTTPHeaderFields?[ETagManager.eTagRequestHeader.rawValue]) == eTag
+            expect(request.allHTTPHeaderFields?[ETagManager.lastRefreshTimeRequestHeader.rawValue])
+            == eTagValidationTime.millisecondsSince1970.description
+
+            return HTTPStubsResponse(
+                data: responseData,
+                statusCode: .success,
+                headers: nil
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.body) == responseData
+
+        expect(self.eTagManager.invokedETagHeader).to(beTrue())
+        expect(self.eTagManager.invokedHTTPResultFromCacheOrBackend) == true
+    }
+
+    func testRemoteConfigFallbackGetsCachedResponseWhenStatusCodeIsNotModified() {
+        let path = HTTPRequest.FallbackPath.remoteConfig(domain: "app")
+        let request = HTTPRequest(method: .get, path: path)
+        let cachedResponseData = """
+        {"domain":"app","manifest":"cached","active_topics":[],"topics":{}}
+        """.asData
+        let eTag = "fallback-etag"
+
+        self.eTagManager.stubResponseEtag(eTag)
+        self.eTagManager.shouldReturnResultFromBackend = false
+        self.eTagManager.stubbedHTTPResultFromCacheOrBackendResult = .init(
+            httpStatusCode: .success,
+            responseHeaders: [:],
+            body: cachedResponseData,
+            verificationResult: .verified,
+            isLoadShedderResponse: false,
+            isFallbackUrlResponse: false
+        )
+
+        stub(condition: isPath(path)) { request in
+            expect(request.allHTTPHeaderFields?[ETagManager.eTagRequestHeader.rawValue]) == eTag
+
+            return HTTPStubsResponse(
+                data: Data(),
+                statusCode: .notModified,
+                headers: nil
+            )
+        }
+
+        let response: VerifiedHTTPResponse<RemoteConfiguration>.Result? = waitUntilValue { completion in
+            self.client.perform(request) { (response: VerifiedHTTPResponse<RemoteConfiguration>.Result) in
+                completion(response)
+            }
+        }
+
+        expect(response).to(beSuccess())
+        expect(response?.value?.httpStatusCode) == .success
+        expect(response?.value?.body.domain) == "app"
+        expect(response?.value?.body.manifest) == "cached"
+        expect(self.eTagManager.invokedHTTPResultFromCacheOrBackend) == true
+    }
+
+    func testResponseOriginalSourceIsLoadShedderWhenHeaderIsTrue() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let responseData = "{\"message\": \"something is great up in the cloud\"}".asData
+        let eTag = "etag"
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(
+                data: responseData,
+                statusCode: .success,
+                headers: [
+                    HTTPClient.ResponseHeader.isLoadShedder.rawValue: "true",
+                    HTTPClient.ResponseHeader.eTag.rawValue: eTag
+                ]
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) == .loadShedder
+    }
+
+    func testResponseOriginalSourceIsNotLoadShedderWhenHeaderIsNotTrue() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let responseData = "{\"message\": \"something is great up in the cloud\"}".asData
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(
+                data: responseData,
+                statusCode: .success,
+                headers: [
+                    HTTPClient.ResponseHeader.isLoadShedder.rawValue: "false"
+                ]
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) != .loadShedder
+    }
+
+    func testResponseOriginalSourceIsNotLoadShedderWhenHeaderIsMissing() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let responseData = "{\"message\": \"something is great up in the cloud\"}".asData
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(
+                data: responseData,
+                statusCode: .success,
+                headers: nil
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) != .loadShedder
+    }
+
+    func testResponseOriginalSourceIsFallbackUrlWhenUsingFallbackHost() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let responseData = "{\"mapping\": {}}".asData
+
+        let fallbackURL = try XCTUnwrap(request.path.fallbackUrls.first)
+        stub(condition: isPath(request.path)) { urlRequest in
+            // Fail the main request to trigger fallback
+            if urlRequest.url?.absoluteString != fallbackURL.absoluteString {
+                // Primary URL response
+                return HTTPStubsResponse(
+                    data: Data(),
+                    statusCode: .internalServerError,
+                    headers: nil
+                )
+            } else {
+                // Fallback URL response
+                return HTTPStubsResponse(
+                    data: responseData,
+                    statusCode: .success,
+                    headers: nil
+                )
+            }
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) == .fallbackUrl
+    }
+
+    func testDoesNotRetryWithFallbackHostOnDeviceConnectivityError() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let fallbackURL = try XCTUnwrap(request.path.fallbackUrls.first)
+        // A device-side URLError: switching hosts can't help when the device itself is offline.
+        let deviceError = NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)
+
+        let fallbackRequestCount: Atomic<Int> = .init(0)
+        stub(condition: isPath(request.path)) { urlRequest in
+            if urlRequest.url?.absoluteString == fallbackURL.absoluteString {
+                fallbackRequestCount.value += 1
+                return HTTPStubsResponse(data: "{\"mapping\": {}}".asData, statusCode: .success, headers: nil)
+            }
+
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = deviceError
+            return response
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).to(beFailure())
+        expect(fallbackRequestCount.value) == 0
+    }
+
+    func testRetriesWithFallbackHostOnHostConnectivityError() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let responseData = "{\"mapping\": {}}".asData
+        let fallbackURL = try XCTUnwrap(request.path.fallbackUrls.first)
+        // A host-side URLError: a different host may still succeed, so a fallback retry is warranted.
+        let hostError = NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost)
+
+        let fallbackRequestCount: Atomic<Int> = .init(0)
+        stub(condition: isPath(request.path)) { urlRequest in
+            if urlRequest.url?.absoluteString == fallbackURL.absoluteString {
+                fallbackRequestCount.value += 1
+                return HTTPStubsResponse(data: responseData, statusCode: .success, headers: nil)
+            }
+
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = hostError
+            return response
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) == .fallbackUrl
+        expect(fallbackRequestCount.value) == 1
+    }
+
+    func testResponseOriginalSourceIsNotFallbackUrlWhenNotUsingFallbackHost() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let responseData = "{\"mapping\": {}}".asData
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(
+                data: responseData,
+                statusCode: .success,
+                headers: nil
+            )
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) != .fallbackUrl
+    }
+
+    func testResponseOriginalSourceIsFallbackUrlWhenBothLoadShedderAndFallbackUrlAreTrue() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let responseData = "{\"mapping\": {}}".asData
+
+        let fallbackURL = try XCTUnwrap(request.path.fallbackUrls.first)
+        stub(condition: isPath(request.path)) { urlRequest in
+            // Fail the main request to trigger fallback
+            if urlRequest.url?.absoluteString != fallbackURL.absoluteString {
+                // Primary URL response
+                return HTTPStubsResponse(
+                    data: Data(),
+                    statusCode: .internalServerError,
+                    headers: nil
+                )
+            } else {
+                // Fallback URL response
+                return HTTPStubsResponse(
+                    data: responseData,
+                    statusCode: .success,
+                    headers: [
+                        HTTPClient.ResponseHeader.isLoadShedder.rawValue: "true"
+                    ]
+                )
+            }
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: DataResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.originalSource) == .fallbackUrl
+    }
+
+    func testLogsMessageWhenWhenBothLoadShedderAndFallbackUrlAreTrue() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let responseData = "{\"mapping\": {}}".asData
+
+        let fallbackURL = try XCTUnwrap(request.path.fallbackUrls.first)
+        stub(condition: isPath(request.path)) { urlRequest in
+            // Fail the main request to trigger fallback
+            if urlRequest.url?.absoluteString != fallbackURL.absoluteString {
+                // Primary URL response
+                return HTTPStubsResponse(
+                    data: Data(),
+                    statusCode: .internalServerError,
+                    headers: nil
+                )
+            } else {
+                // Fallback URL response
+                return HTTPStubsResponse(
+                    data: responseData,
+                    statusCode: .success,
+                    headers: [
+                        HTTPClient.ResponseHeader.isLoadShedder.rawValue: "true"
+                    ]
+                )
+            }
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        let expectedMessage = Strings.network.api_request_response_both_fallback_and_load_shedder(request).description
+        self.logger.verifyMessageWasLogged(
+            expectedMessage,
+            level: .warn
+        )
+    }
+
+    func testResponseDeserialization() throws {
+        struct CustomResponse: Codable, Equatable, HTTPResponseBody {
+            let message: String
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let response = CustomResponse(message: "Something is great up in the cloud")
+        let responseData = try JSONEncoder.default.encode(response)
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(data: responseData,
+                                     statusCode: .success,
+                                     headers: nil)
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: VerifiedHTTPResponse<CustomResponse>.Result) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.value?.body) == response
+        expect(result?.value?.httpStatusCode) == .success
+    }
+
+    func testCachedRequestsIncludeETagHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+        let eTag = "ETAG"
+
+        let headerPresent: Atomic<Bool> = false
+
+        self.eTagManager.stubResponseEtag(eTag)
+
+        stub(condition: isPath(request.path)) { request in
+            headerPresent.value = request.allHTTPHeaderFields?[ETagManager.eTagRequestHeader.rawValue] == eTag
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+        expect(self.eTagManager.invokedETagHeader) == true
+    }
+
+    func testNotCachedRequestsDontIncludeETagHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .health)
+        let headerPresent: Atomic<Bool?> = nil
+
+        stub(condition: isPath(request.path)) { request in
+            headerPresent.value = request.allHTTPHeaderFields?.keys.contains(
+                ETagManager.eTagRequestHeader.rawValue
+            ) == true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == false
+        expect(self.eTagManager.invokedETagHeader) == false
+    }
+
+    func testRemoteConfigDoesNotUseETagCacheEvenIfResponseIncludesETagHeader() {
+        let request = HTTPRequest(
+            method: .post(RemoteConfigRequest(fetchContext: .appStart, appUserID: "app-user-id")),
+            path: HTTPRequest.Path.remoteConfig(domain: "app")
+        )
+        let headerPresent: Atomic<Bool?> = nil
+
+        stub(condition: isPath(request.path)) { request in
+            headerPresent.value = request.allHTTPHeaderFields?.keys.contains(
+                ETagManager.eTagRequestHeader.rawValue
+            ) == true
+            return HTTPStubsResponse(
+                data: Data(),
+                statusCode: .success,
+                headers: [ETagManager.eTagResponseHeader.rawValue: "ETAG"]
+            )
+        }
+
+        waitUntil { completion in
+            self.client.perform(request, with: .disabled) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == false
+        expect(self.eTagManager.invokedETagHeader) == false
+        expect(self.eTagManager.invokedHTTPResultFromCacheOrBackend) == false
+    }
+
+    func testAlwaysPassesClientVersion() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        let version = SystemInfo.appVersion
+
+        stub(condition: hasHeaderNamed("X-Client-Version", value: version)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAlwaysPassesClientBuildVersion() throws {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        let version = try XCTUnwrap(Bundle.main.infoDictionary!["CFBundleVersion"] as? String)
+
+        stub(condition: hasHeaderNamed("X-Client-Build-Version", value: version )) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAlwaysPassesClientBundleID() throws {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        let bundleID = try XCTUnwrap(Bundle.main.bundleIdentifier)
+
+        stub(condition: hasHeaderNamed("X-Client-Bundle-ID", value: bundleID)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesStoreKit2EnabledHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        let enabled = self.systemInfo.storeKitVersion.isStoreKit2EnabledAndAvailable.description
+
+        stub(condition: hasHeaderNamed("X-StoreKit2-Enabled",
+                                       value: enabled)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesStoreKitVersionHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        let version = self.systemInfo.storeKitVersion.effectiveVersion.debugDescription
+
+        stub(condition: hasHeaderNamed("X-StoreKit-Version",
+                                       value: version)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    // MARK: Dynamic timeout management
+
+    func testRecordsSuccessOnMainBackendAfterSuccessfulRequestToMainBackend() throws {
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+
+        timeoutManager.recordRequestResult(host: host, .mainSourceTimedOut)
+
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+        )
+
+        stub(condition: isPath(request.path)) { request in
+            XCTAssertEqual(
+                request.timeoutInterval,
+                HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+            )
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // The successful main-source response cleared this host's timeout entry.
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallback
+        )
+    }
+
+    func testRecordsTimeoutOnMainBackendWithFallbackWhenTimeoutOccursOnMainBackendWithFallback() throws {
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+
+        // main request
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { request in
+
+            // Main-source request supporting a fallback should use the base tier for that kind
+            XCTAssertEqual(
+                request.timeoutInterval,
+                HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallback
+            )
+            return .timeoutResponse()
+        }
+
+        // fallback request
+        let fallbackUrl = try XCTUnwrap(request.path.fallbackUrls.first?.absoluteString)
+        stub(condition: isAbsoluteURLString(fallbackUrl)) { request in
+
+            // API sources are disabled here, so the fallback-host request keeps the legacy flat timeout
+            XCTAssertEqual(request.timeoutInterval, Configuration.networkTimeoutDefault)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+    }
+
+    /// With API sources enabled, fallback-host requests move to the re-tiered flat timeout instead of the
+    /// legacy network timeout.
+    func testUsesReTieredFlatTimeoutForFallbackHostRequestWhenAPISourcesEnabled() throws {
+        let client = self.createClient(self.systemInfoUsingAPISources())
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { _ in
+            return .timeoutResponse()
+        }
+
+        let fallbackUrl = try XCTUnwrap(request.path.fallbackUrls.first?.absoluteString)
+        stub(condition: isAbsoluteURLString(fallbackUrl)) { request in
+            XCTAssertEqual(request.timeoutInterval, HTTPRequestTimeoutManager.Timeout.flat)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            client.perform(request) { (_: DataResponse) in completion() }
+        }
+    }
+
+    func testRecordsTimeoutWhenTimeoutOccursOnMainSourceEndpointNotSupportingFallback() throws {
+        // The broadened no-fallback fail-fast tiers and recording only apply when API sources are enabled.
+        let client = self.createClient(self.systemInfoUsingAPISources())
+        let request = HTTPRequest(method: .get, path: .logIn)
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+
+        // main request
+        stub(condition: isPath(request.path)) { request in
+
+            // Main-source request to an endpoint without fallback support should use its base tier
+            XCTAssertEqual(
+                request.timeoutInterval,
+                HTTPRequestTimeoutManager.Timeout.mainSourceNoFallback
+            )
+            return .timeoutResponse()
+        }
+
+        waitUntil { completion in
+            client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // The timeout is now recorded for this host even though the endpoint has no fallback support,
+        // so subsequent main-source requests to this host use the reduced tiers.
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: false,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceNoFallbackReduced
+        )
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+        )
+    }
+
+    func testKeepsLegacyTimeoutForNoFallbackEndpointWhenAPISourcesDisabled() throws {
+        // API sources are disabled by default, so a no-fallback endpoint keeps the legacy flat timeout
+        // and its timeout does not arm the per-host fail-fast memory.
+        let request = HTTPRequest(method: .get, path: .logIn)
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+
+        stub(condition: isPath(request.path)) { request in
+            XCTAssertEqual(request.timeoutInterval, Configuration.networkTimeoutDefault)
+            return .timeoutResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // The host was not armed: a subsequent main-source request stays on the base tier.
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallback
+        )
+    }
+
+    func testRemoteConfigFallbackPathUsesFlatTimeoutAndDoesNotArmMemory() throws {
+        // The domain layer aims this path at a fallback host, so even with API sources enabled it must
+        // get the flat fallback tier rather than the aggressive main-source tiers.
+        let client = self.createClient(self.systemInfoUsingAPISources())
+        let request = HTTPRequest(method: .get, path: HTTPRequest.FallbackPath.remoteConfig(domain: "app"))
+        let host = try XCTUnwrap(HTTPRequest.FallbackPath.serverHostURL.host)
+
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { request in
+            XCTAssertEqual(request.timeoutInterval, HTTPRequestTimeoutManager.Timeout.flat)
+            return .timeoutResponse()
+        }
+
+        waitUntil { completion in
+            client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // A timeout against a fallback host says nothing about the main source, so the host stays on
+        // its base tier.
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: false,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceNoFallback
+        )
+    }
+
+    func testRemoteConfigFallbackSuccessDoesNotClearMainSourceMemory() throws {
+        let client = self.createClient(self.systemInfoUsingAPISources())
+        let request = HTTPRequest(method: .get, path: HTTPRequest.FallbackPath.remoteConfig(domain: "app"))
+        let host = try XCTUnwrap(HTTPRequest.FallbackPath.serverHostURL.host)
+
+        timeoutManager.recordRequestResult(host: host, .mainSourceTimedOut)
+
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // A fallback-host response is no evidence that the main source recovered, so the recorded
+        // timeout must survive it.
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: false,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceNoFallbackReduced
+        )
+    }
+
+    func testClearsMainSourceMemoryWhenASuccessfulResponseFailsToDecode() throws {
+        struct CustomResponse: Decodable, HTTPResponseBody {
+            let data: String
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+
+        timeoutManager.recordRequestResult(host: host, .mainSourceTimedOut)
+
+        stub(condition: isPath(request.path)) { _ in
+            HTTPStubsResponse(data: "{this is not JSON.csdsd".asData, statusCode: .success, headers: nil)
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: VerifiedHTTPResponse<CustomResponse>.Result) in
+                completion(response)
+            }
+        }
+
+        expect(result).to(beFailure())
+
+        // The host answered in time and only its payload was unusable, so its entry is cleared and the
+        // next request goes back to the base tier.
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: false,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceNoFallback
+        )
+    }
+
+    func testRecordsOtherResultWhenRequestFailsWithoutTimeout() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+
+        timeoutManager.recordRequestResult(host: host, .mainSourceTimedOut)
+
+        // main request
+        stub(condition: isPath(request.path)) { request in
+
+            // Main-source request should use the reduced timeout since it timed out before and supports fallback
+            XCTAssertEqual(
+                request.timeoutInterval,
+                HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+            )
+            return .notFoundRespoonse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Still reduced timeout because error was not a timeout
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+        )
+    }
+
+    func testRecordsOtherResultWhenRequestFailsWithTriggeringFallbackError() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+
+        // main request fails with server error (triggers fallback)
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { request in
+            // Main-source request should use the base tier for a request supporting fallback
+            XCTAssertEqual(
+                request.timeoutInterval,
+                HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallback
+            )
+            return .serverDownResponse()
+        }
+
+        // fallback request succeeds
+        let fallbackUrl = try XCTUnwrap(request.path.fallbackUrls.first?.absoluteString)
+        stub(condition: isAbsoluteURLString(fallbackUrl)) { request in
+            // API sources are disabled here, so the fallback-host request keeps the legacy flat timeout
+            XCTAssertEqual(request.timeoutInterval, Configuration.networkTimeoutDefault)
+            return .emptySuccessResponse()
+        }
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Timeout should remain at the base tier because a non-timeout error doesn't record a timeout
+        XCTAssertEqual(
+            timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallback
+        )
+    }
+
+    func testFullHTTPRequestTimeoutFlow() async {
+
+        enum MainBackendTimeoutRequestPath: HTTPRequestPath {
+            static let serverHostURL = URL(string: "http://this-is-a-main-host.com")!
+
+            case first
+            case second
+
+            var authenticated: Bool { false }
+            var shouldSendEtag: Bool { false }
+            var supportsSignatureVerification: Bool { false }
+            var needsNonceForSigning: Bool { false }
+            var name: String { "Test" }
+            var relativePath: String {
+                switch self {
+                case .first: return "/first"
+                case .second: return "/second"
+                }
+            }
+
+            var fallbackUrls: [URL] {
+                [URL(string: "https://this-is-a-fallback.com/\(relativePath)-fallback")!]
+            }
+        }
+
+        let firstRequest = HTTPRequest(
+            method: .get,
+            requestPath: MainBackendTimeoutRequestPath.first
+        )
+
+        let secondRequest = HTTPRequest(
+            method: .get,
+            requestPath: MainBackendTimeoutRequestPath.second
+        )
+
+        let host = MainBackendTimeoutRequestPath.serverHostURL.host!
+
+        // The initial request to the main source should use the base tier for a request
+        // supporting fallback
+        XCTAssertEqual(
+            self.timeoutManager.timeout(
+                host: host,
+                isFallbackHostRequest: false,
+                endpointSupportsFallbackURLs: true,
+                isProxied: false,
+                reTieredTimeoutsEnabled: true
+            ),
+            HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallback
+        )
+
+        stub(condition: isHost(host)) { _ in
+            return .timeoutResponse()
+        }
+
+        // Stub request to the fallback URL
+        var fallbackCalled = false
+        stub(condition: isAbsoluteURLString(firstRequest.path.fallbackUrls.first!.absoluteString)) { request in
+            // API sources are disabled here, so the fallback-host request keeps the legacy flat timeout
+            XCTAssertEqual(
+                request.timeoutInterval,
+                Configuration.networkTimeoutDefault
+            )
+
+            fallbackCalled = true
+
+            return .emptySuccessResponse()
+        }
+
+        // Stub second request
+        var secondRequestCalled = false
+        stub(condition: isPath(secondRequest.path)) { request in
+            // The second request to the same (recently timed-out) host should use the reduced tier
+            XCTAssertEqual(
+                request.timeoutInterval,
+                HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+            )
+
+            secondRequestCalled = true
+
+            return .emptySuccessResponse()
+        }
+
+        await waitUntil { completion in
+            self.client.perform(firstRequest) { (_: DataResponse) in
+                // A new main-source request to the same host should use the reduced tier since
+                // that host recently timed out
+                XCTAssertEqual(
+                    self.timeoutManager.timeout(
+                        host: host,
+                        isFallbackHostRequest: false,
+                        endpointSupportsFallbackURLs: true,
+                        isProxied: false,
+                        reTieredTimeoutsEnabled: true
+                    ),
+                    HTTPRequestTimeoutManager.Timeout.mainSourceSupportingFallbackReduced
+                )
+
+                // perform the second request after the first request has been finished
+                self.client.perform(secondRequest) { (_: DataResponse) in
+                    completion()
+                }
+            }
+        }
+
+        XCTAssertTrue(fallbackCalled)
+        XCTAssertTrue(secondRequestCalled)
+    }
+
+    // MARK: - Proxy URL timeout tests
+
+    /// When a proxy URL is set, fallback URLs are disabled. Since there's no fallback safety net,
+    /// the timeout manager should use the default timeout for fallback-supporting endpoints
+    /// instead of the aggressive short timeout.
+    func testUsesDefaultTimeoutForFallbackSupportingEndpointWhenProxyURLIsSet() throws {
+        let proxyURL = try XCTUnwrap(URL(string: "https://proxy.revenuecat.com"))
+        SystemInfo.proxyURL = proxyURL
+
+        defer {
+            SystemInfo.proxyURL = nil
+        }
+
+        // Recreate client so it picks up the proxy URL
+        self.client = self.createClient()
+
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+
+        stub(condition: isHost("proxy.revenuecat.com")) { request in
+            // With a proxy URL, the request should use a flat timeout because fallback URLs are
+            // disabled and the short timeout is only useful when fallback can catch a timeout.
+            // API sources are disabled here, so that flat timeout is the legacy one.
+            XCTAssertEqual(request.timeoutInterval, Configuration.networkTimeoutDefault)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+    }
+
+    /// When a proxy URL is set and a previous timeout occurred, the timeout manager should NOT
+    /// use the reduced (2s) timeout. Since fallback is disabled with a proxy, using a reduced
+    /// timeout would make requests very likely to fail with no recovery path.
+    func testDoesNotUseReducedTimeoutAfterTimeoutWhenProxyURLIsSet() throws {
+        let proxyURL = try XCTUnwrap(URL(string: "https://proxy.revenuecat.com"))
+        SystemInfo.proxyURL = proxyURL
+
+        defer {
+            SystemInfo.proxyURL = nil
+        }
+
+        // Recreate client so it picks up the proxy URL
+        self.client = self.createClient()
+
+        // Simulate a previous timeout on the proxy host
+        timeoutManager.recordRequestResult(host: "proxy.revenuecat.com", .mainSourceTimedOut)
+
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+
+        stub(condition: isHost("proxy.revenuecat.com")) { request in
+            // Even after a previous timeout, with a proxy URL set the request should use a flat timeout,
+            // not a reduced tier (proxied requests never consult the memory).
+            XCTAssertEqual(request.timeoutInterval, Configuration.networkTimeoutDefault)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+    }
+
+    /// With API sources enabled, proxied requests move to the re-tiered flat timeout instead of the
+    /// legacy network timeout, and still never consult the per-host memory.
+    func testUsesReTieredFlatTimeoutForProxiedRequestWhenAPISourcesEnabled() throws {
+        let proxyURL = try XCTUnwrap(URL(string: "https://proxy.revenuecat.com"))
+        SystemInfo.proxyURL = proxyURL
+
+        defer {
+            SystemInfo.proxyURL = nil
+        }
+
+        let client = self.createClient(self.systemInfoUsingAPISources())
+
+        timeoutManager.recordRequestResult(host: "proxy.revenuecat.com", .mainSourceTimedOut)
+
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+
+        stub(condition: isHost("proxy.revenuecat.com")) { request in
+            XCTAssertEqual(request.timeoutInterval, HTTPRequestTimeoutManager.Timeout.flat)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            client.perform(request) { (_: DataResponse) in completion() }
+        }
+    }
+
+    #if os(macOS) || targetEnvironment(macCatalyst)
+    func testAlwaysPassesAppleDeviceIdentifierWhenIsSandbox() {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+        systemInfo.stubbedIsSandbox = true
+
+        let idfv = systemInfo.identifierForVendor!
+
+        stub(condition: hasHeaderNamed("X-Apple-Device-Identifier", value: idfv )) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testAppleDeviceIdentifierNilWhenIsNotSandboxInMacOS() {
+        self.systemInfo.stubbedIsSandbox = false
+
+        expect(self.systemInfo.identifierForVendor).to(beNil())
+    }
+
+    #else
+
+    func testAlwaysPassesAppleDeviceIdentifier() throws {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        let idfv = try XCTUnwrap(self.systemInfo.identifierForVendor)
+
+        stub(condition: hasHeaderNamed("X-Apple-Device-Identifier", value: idfv )) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+    #endif
+
+    func testDefaultsPlatformFlavorToNative() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Platform-Flavor", value: "native")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesPlatformFlavorHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Platform-Flavor", value: "react-native")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+        let platformInfo = Purchases.PlatformInfo(flavor: "react-native", version: "3.2.1")
+        let systemInfo = SystemInfo(platformInfo: platformInfo,
+                                    finishTransactions: true,
+                                    apiKey: "api_key",
+                                    preferredLocalesProvider: .mock())
+
+        self.client = self.createClient(systemInfo)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesPlatformDeviceHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Platform-Device", value: SystemInfo.deviceVersion)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesPlatformFlavorVersionHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Platform-Flavor-Version", value: "1.2.3")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+        let platformInfo = Purchases.PlatformInfo(flavor: "react-native", version: "1.2.3")
+        let systemInfo = SystemInfo(platformInfo: platformInfo,
+                                    finishTransactions: true,
+                                    apiKey: "api_key",
+                                    preferredLocalesProvider: .mock())
+        self.client = self.createClient(systemInfo)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesInstallationMethodHeader() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Installation-Method",
+                                       value: SystemInfo.installationMethod)) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesObserverModeHeaderCorrectlyWhenEnabled() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Observer-Mode-Enabled", value: "false")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+        self.client = self.createClient(SystemInfo(platformInfo: nil,
+                                                   finishTransactions: true,
+                                                   apiKey: "api_key",
+                                                   preferredLocalesProvider: .mock()))
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPassesUIPreviewModeHeaderCorrectlyWhenEnabled() {
+        let headerName = "X-UI-Preview-Mode"
+        let systemInfo = SystemInfo(platformInfo: nil,
+                                    finishTransactions: true,
+                                    apiKey: "api_key",
+                                    dangerousSettings: .init(uiPreviewMode: true),
+                                    preferredLocalesProvider: .mock())
+        self.client = self.createClient(systemInfo)
+
+        let header: Atomic<String?> = nil
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        stub(condition: hasHeaderNamed(headerName)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == "true"
+    }
+
+    func testDoesNotPassUIPreviewModeHeaderWhenDisabled() {
+        let headerName = "X-UI-Preview-Mode"
+        let systemInfo = SystemInfo(platformInfo: nil,
+                                    finishTransactions: true,
+                                    apiKey: "api_key",
+                                    dangerousSettings: .init(uiPreviewMode: false),
+                                    preferredLocalesProvider: .mock())
+        self.client = self.createClient(systemInfo)
+
+        let header: Atomic<String?> = nil
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        stub(condition: isPath(request.path)) { request in
+            header.value = request.value(forHTTPHeaderField: headerName)
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(header.value) == nil
+    }
+
+    func testRequestsWithCustomEntitlementsSendHeader() {
+        self.client = self.createClient(MockSystemInfo(finishTransactions: true, customEntitlementsComputation: true))
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        var headerPresent = false
+
+        stub(condition: isPath(request.path)) { request in
+            let headers =  request.allHTTPHeaderFields ?? [:]
+            headerPresent = headers["X-Custom-Entitlements-Computation"] != nil
+                && headers["X-Custom-Entitlements-Computation"] == "true"
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent) == true
+    }
+
+    func testRequestsWithoutCustomEntitlementsDoNotSendHeader() {
+        self.client = self.createClient(MockSystemInfo(finishTransactions: true, customEntitlementsComputation: false))
+
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        var headerPresent = true
+
+        stub(condition: isPath(request.path)) { request in
+            let headers =  request.allHTTPHeaderFields ?? [:]
+            headerPresent = headers["X-Custom-Entitlements-Computation"] != nil
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent) == false
+    }
+
+    func testPassesObserverModeHeaderCorrectlyWhenDisabled() {
+        let request = HTTPRequest(method: .post([:]), path: .mockPath)
+
+        let headerPresent: Atomic<Bool> = false
+
+        stub(condition: hasHeaderNamed("X-Observer-Mode-Enabled", value: "true")) { _ in
+            headerPresent.value = true
+            return .emptySuccessResponse()
+        }
+        self.client = self.createClient(SystemInfo(platformInfo: nil,
+                                                   finishTransactions: false,
+                                                   apiKey: "api_key",
+                                                   preferredLocalesProvider: .mock()))
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(headerPresent.value) == true
+    }
+
+    func testPerformSerialRequestPerformsAllRequestsInTheCorrectOrder() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let completionCallCount: Atomic<Int> = .init(0)
+
+        stub(condition: isPath(path)) { request in
+            let requestNumber = Self.extractRequestNumber(from: request)
+            expect(requestNumber) == completionCallCount.value
+
+            let json = "{\"message\": \"something is great up in the cloud\"}"
+            return HTTPStubsResponse(data: json.asData,
+                                     statusCode: .success,
+                                     headers: nil)
+                .responseTime(0.003)
+        }
+
+        let serialRequests = 10
+        for requestNumber in 0..<serialRequests {
+            let expectation = self.expectation(description: "Request \(requestNumber)")
+
+            client.perform(.init(method: .requestNumber(requestNumber), path: path)) { (_: DataResponse) in
+                completionCallCount.value += 1
+                expectation.fulfill()
+            }
+        }
+
+        self.waitForExpectations(timeout: defaultRequestTimeout)
+        expect(completionCallCount.value) == serialRequests
+    }
+
+    func testPerformSerialRequestWaitsUntilFirstRequestIsDoneBeforeStartingSecond() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let firstRequestFinished: Atomic<Bool> = false
+        let secondRequestFinished: Atomic<Bool> = false
+
+        stub(condition: isPath(path)) { request in
+            usleep(30)
+            let requestNumber = Self.extractRequestNumber(from: request)
+            if requestNumber == 2 {
+                expect(firstRequestFinished.value) == true
+            }
+
+            let json = "{\"message\": \"something is great up in the cloud\"}"
+            return HTTPStubsResponse(data: json.data(using: String.Encoding.utf8)!,
+                                     statusCode: .success,
+                                     headers: nil)
+                .responseTime(0.1)
+        }
+
+        let expectations = [
+            self.expectation(description: "Request 1"),
+            self.expectation(description: "Request 2")
+        ]
+
+        self.client.perform(.init(method: .requestNumber(1), path: path)) { (_: DataResponse) in
+            firstRequestFinished.value = true
+            expectations[0].fulfill()
+        }
+
+        self.client.perform(.init(method: .requestNumber(2), path: path)) { (_: DataResponse) in
+            secondRequestFinished.value = true
+            expectations[1].fulfill()
+        }
+
+        self.waitForExpectations(timeout: defaultRequestTimeout)
+
+        expect(firstRequestFinished.value) == true
+        expect(secondRequestFinished.value) == true
+    }
+
+    func testPerformSerialRequestWaitsUntilRequestsAreDoneBeforeStartingNext() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let firstRequestFinished: Atomic<Bool> = false
+        let secondRequestFinished: Atomic<Bool> = false
+        let thirdRequestFinished: Atomic<Bool> = false
+
+        stub(condition: isPath(path)) { request in
+            let requestNumber = Self.extractRequestNumber(from: request)
+            var responseTime = 0.05
+            if requestNumber == 1 {
+                expect(secondRequestFinished.value) == false
+                expect(thirdRequestFinished.value) == false
+            } else if requestNumber == 2 {
+                expect(firstRequestFinished.value) == true
+                expect(thirdRequestFinished.value) == false
+                responseTime = 0.03
+            } else if requestNumber == 3 {
+                expect(firstRequestFinished.value) == true
+                expect(secondRequestFinished.value) == true
+                responseTime = 0.01
+            }
+
+            let json = "{\"message\": \"something is great up in the cloud\"}"
+            return HTTPStubsResponse(data: json.asData,
+                                     statusCode: .success,
+                                     headers: nil)
+                .responseTime(responseTime)
+        }
+
+        let expectations = [
+            self.expectation(description: "Request 1"),
+            self.expectation(description: "Request 2"),
+            self.expectation(description: "Request 3")
+        ]
+
+        self.client.perform(.init(method: .requestNumber(1), path: path)) { (_: DataResponse) in
+            firstRequestFinished.value = true
+            expectations[0].fulfill()
+        }
+
+        self.client.perform(.init(method: .requestNumber(2), path: path)) { (_: DataResponse) in
+            secondRequestFinished.value = true
+            expectations[1].fulfill()
+        }
+
+        self.client.perform(.init(method: .requestNumber(3), path: path)) { (_: DataResponse) in
+            thirdRequestFinished.value = true
+            expectations[2].fulfill()
+        }
+
+        self.waitForExpectations(timeout: defaultRequestTimeout)
+
+        expect(firstRequestFinished.value) == true
+        expect(secondRequestFinished.value) == true
+        expect(thirdRequestFinished.value) == true
+    }
+
+    func testPerformRequestExitsWithErrorIfBodyCouldntBeParsedIntoJSON() throws {
+        let response = waitUntilValue { completion in
+            self.client.perform(.init(method: .invalidBody(), path: .mockPath)) { (result: DataResponse) in
+                completion(result)
+            }
+        }
+
+        let error = try XCTUnwrap(response?.error)
+        expect(error) == .unableToCreateRequest(HTTPRequest.Path.mockPath)
+    }
+
+    func testPerformRequestDoesntPerformRequestIfBodyCouldntBeParsedIntoJSON() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let httpCallMade: Atomic<Bool> = false
+
+        stub(condition: isPath(path)) { _ in
+            httpCallMade.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(.init(method: .invalidBody(), path: path)) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        expect(httpCallMade.value) == false
+    }
+
+    func testRequestIsRetriedIfResponseFromETagManagerIsNil() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let requests: Atomic<Int> = .init(0)
+
+        stub(condition: isPath(path)) { [eTagManager = self.eTagManager!] _ in
+            defer { requests.value += 1 }
+
+            if requests.value > 0 {
+                eTagManager.shouldReturnResultFromBackend = true
+            }
+
+            return .emptySuccessResponse()
+        }
+
+        self.eTagManager.shouldReturnResultFromBackend = false
+        self.eTagManager.stubbedHTTPResultFromCacheOrBackendResult = nil
+
+        let result: DataResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path)) {
+                completion($0)
+            }
+        }
+
+        expect(result).to(beSuccess())
+        expect(requests.value) == 2
+    }
+
+    func testGetsResponseFromETagManagerWhenStatusCodeIsNotModified() throws {
+        let path: HTTPRequest.Path = .mockPath
+
+        let mockedCachedResponse = try JSONSerialization.data(withJSONObject: [
+            "test": "data"
+        ])
+        let eTag = "tag"
+        let requestDate = Date().addingTimeInterval(-1000000)
+
+        let headers: [String: String] = [
+            HTTPClient.ResponseHeader.contentType.rawValue: "application/json",
+            HTTPClient.ResponseHeader.signature.rawValue: UUID().uuidString,
+            HTTPClient.ResponseHeader.requestDate.rawValue: String(requestDate.millisecondsSince1970)
+        ]
+
+        self.eTagManager.stubResponseEtag(eTag)
+        self.eTagManager.shouldReturnResultFromBackend = false
+        self.eTagManager.stubbedHTTPResultFromCacheOrBackendResult = .init(
+            httpStatusCode: .success,
+            responseHeaders: headers,
+            body: mockedCachedResponse,
+            verificationResult: .verified,
+            isLoadShedderResponse: false,
+            isFallbackUrlResponse: true
+        )
+
+        stub(condition: isPath(path)) { response in
+            expect(response.allHTTPHeaderFields?[ETagManager.eTagRequestHeader.rawValue]) == eTag
+
+            return .init(data: Data(),
+                         statusCode: .notModified,
+                         headers: headers)
+        }
+
+        let response: DataResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path)) { (result: DataResponse) in
+                completion(result)
+            }
+        }
+
+        expect(response).toNot(beNil())
+        expect(response?.value?.httpStatusCode) == .success
+        expect(response?.value?.body) == mockedCachedResponse
+        expect(response?.value?.requestDate).to(beCloseToDate(requestDate))
+        expect(response?.value?.verificationResult) == .notRequested
+        expect(response?.value?.responseHeaders.keys).to(contain(Array(headers.keys.map(AnyHashable.init))))
+        expect(response?.value?.originalSource) == .fallbackUrl
+
+        expect(self.eTagManager.invokedETagHeaderParametersList).to(haveCount(1))
+    }
+
+    func testDNSCheckerIsCalledWhenGETRequestFailedWithUnknownError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: nil)
+        MockDNSChecker.stubbedIsBlockedAPIErrorResult.value = false
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = error
+            return response
+        }
+
+        waitUntil { completion in
+            self.client.perform(.init(method: .get, path: path)) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        expect(MockDNSChecker.invokedErrorWithBlockedHostFromError.value) == true
+        expect(MockDNSChecker.invokedIsBlockedAPIError.value) == false
+    }
+
+    func testDNSCheckerIsCalledWhenPOSTRequestFailedWithUnknownError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: nil)
+        MockDNSChecker.stubbedIsBlockedAPIErrorResult.value = false
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = error
+            return response
+        }
+
+        waitUntil { completion in
+            self.client.perform(.init(method: .post([:]), path: path)) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        expect(MockDNSChecker.invokedErrorWithBlockedHostFromError.value) == true
+        expect(MockDNSChecker.invokedIsBlockedAPIError.value) == false
+    }
+
+    func testDNSCheckedIsCalledWhenPOSTRequestFailedWithDNSError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let fakeSubscribersURL = URL(string: "https://0.0.0.0/subscribers")!
+        let userInfo: [String: Any] = [NSURLErrorFailingURLErrorKey: fakeSubscribersURL]
+        let nsErrorWithUserInfo = NSError(domain: NSURLErrorDomain,
+                                          code: NSURLErrorCannotConnectToHost,
+                                          userInfo: userInfo as [String: Any])
+        MockDNSChecker.stubbedIsBlockedAPIErrorResult.value = true
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = nsErrorWithUserInfo
+            return response
+        }
+
+        waitUntil { completion in
+            self.client.perform(.init(method: .post([:]), path: path)) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        expect(MockDNSChecker.invokedErrorWithBlockedHostFromError.value) == true
+        expect(MockDNSChecker.invokedIsBlockedAPIError.value) == false
+    }
+
+    func testDNSCheckedIsCalledWhenGETRequestFailedWithDNSError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let fakeSubscribersURL = URL(string: "https://0.0.0.0/subscribers")!
+        let userInfo: [String: Any] = [NSURLErrorFailingURLErrorKey: fakeSubscribersURL]
+        let nsErrorWithUserInfo = NSError(domain: NSURLErrorDomain,
+                                          code: NSURLErrorCannotConnectToHost,
+                                          userInfo: userInfo as [String: Any])
+        MockDNSChecker.stubbedIsBlockedAPIErrorResult.value = true
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = nsErrorWithUserInfo
+            return response
+        }
+        waitUntil { completion in
+            self.client.perform(.init(method: .get, path: path)) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        expect(MockDNSChecker.invokedErrorWithBlockedHostFromError.value) == true
+        expect(MockDNSChecker.invokedIsBlockedAPIError.value) == false
+    }
+
+    func testOfflineConnectionError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)
+        let expectedError: NetworkError = .networkError(error)
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = error
+            return response
+        }
+
+        let obtainedError: NetworkError? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path)) { (result: DataResponse) in
+                completion(result.error)
+            }
+        }
+
+        // Can't compare the errors directly because `obtainedError` has additional userInfo.
+        expect(obtainedError?.asPurchasesError)
+            .to(matchError(expectedError.asPurchasesError))
+    }
+
+    func testErrorIsLoggedAndReturnsDNSErrorWhenGETRequestFailedWithDNSError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: nil)
+        let expectedDNSError: NetworkError = .dnsError(
+            failedURL: URL(string: "https://0.0.0.0/subscribers")!,
+            resolvedHost: "0.0.0.0"
+        )
+        MockDNSChecker.stubbedIsBlockedAPIErrorResult.value = true
+        MockDNSChecker.stubbedErrorWithBlockedHostFromErrorResult.value = expectedDNSError
+        let expectedMessage = "\(LogIntent.rcError.prefix) \(expectedDNSError.description)"
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = error
+            return response
+        }
+
+        let obtainedError: NetworkError? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path)) { (result: DataResponse) in
+                completion(result.error)
+            }
+        }
+
+        expect(MockDNSChecker.invokedErrorWithBlockedHostFromError.value) == true
+        expect(MockDNSChecker.invokedIsBlockedAPIError.value) == false
+        expect(obtainedError) == expectedDNSError
+        expect(self.logger.messages.map(\.message))
+            .to(contain(expectedMessage))
+    }
+
+    func testErrorIsntLoggedWhenGETRequestFailedWithUnknownError() {
+        let path: HTTPRequest.Path = .mockPath
+
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorUnknown, userInfo: nil)
+        let unexpectedDNSError: NetworkError = .dnsError(
+            failedURL: URL(string: "https://0.0.0.0/subscribers")!,
+            resolvedHost: "0.0.0.0"
+        )
+        MockDNSChecker.stubbedIsBlockedAPIErrorResult.value = false
+
+        stub(condition: isPath(path)) { _ in
+            let response = HTTPStubsResponse.emptySuccessResponse()
+            response.error = error
+            return response
+        }
+
+        waitUntil { completion in
+            self.client.perform(.init(method: .get, path: path)) { (_: DataResponse) in
+                completion()
+            }
+        }
+
+        expect(MockDNSChecker.invokedErrorWithBlockedHostFromError.value) == true
+        expect(MockDNSChecker.invokedIsBlockedAPIError.value) == false
+        expect(self.logger.messages.map(\.message))
+            .toNot(contain(unexpectedDNSError.description))
+    }
+
+    func testResponseFromServerUpdatesRequestDate() throws {
+        let path: HTTPRequest.Path = .mockPath
+        let mockedResponse = BodyWithDate(data: "test", requestDate: Date().addingTimeInterval(-3000000))
+        let encodedResponse = try mockedResponse.jsonEncodedData
+        let requestDate = Date().addingTimeInterval(-100000)
+
+        stub(condition: isPath(path)) { _ in
+            return HTTPStubsResponse(
+                data: encodedResponse,
+                statusCode: .success,
+                headers: [
+                    HTTPClient.ResponseHeader.requestDate.rawValue: String(requestDate.millisecondsSince1970)
+                ]
+            )
+        }
+
+        let response: BodyWithDateResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+
+        expect(response).to(beSuccess())
+        expect(response?.value?.body.requestDate).to(beCloseTo(requestDate, within: 1))
+    }
+
+    func testCachedResponseUpdatesRequestDate() throws {
+        let path: HTTPRequest.Path = .mockPath
+        let eTag = "etag"
+        let mockedResponse = BodyWithDate(data: "test", requestDate: Date().addingTimeInterval(-30000000))
+        let encodedResponse = try mockedResponse.jsonEncodedData
+        let requestDate = Date().addingTimeInterval(-1000000)
+
+        self.eTagManager.stubResponseEtag(eTag)
+        self.eTagManager.shouldReturnResultFromBackend = false
+        self.eTagManager.stubbedHTTPResultFromCacheOrBackendResult = .init(
+            httpStatusCode: .success,
+            responseHeaders: [:],
+            body: encodedResponse,
+            requestDate: requestDate,
+            verificationResult: .notRequested,
+            isLoadShedderResponse: false,
+            isFallbackUrlResponse: false
+        )
+
+        stub(condition: isPath(path)) { _ in
+            return HTTPStubsResponse(
+                data: .init(),
+                statusCode: .notModified,
+                headers: [
+                    HTTPClient.ResponseHeader.requestDate.rawValue: String(requestDate.millisecondsSince1970)
+                ]
+            )
+        }
+
+        let response: BodyWithDateResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+
+        expect(response).to(beSuccess())
+        expect(response?.value?.body.requestDate).to(beCloseTo(requestDate, within: 1))
+        expect(response?.value?.verificationResult) == .notRequested
+
+        expect(self.eTagManager.invokedETagHeaderParametersList).to(haveCount(1))
+    }
+
+    func testforceServerErrorStrategyAllServersDownCallsForceServerFailurePath() {
+        let path: HTTPRequest.Path = .mockPath
+
+        stub(condition: isPath(path)) { _ in
+            fail("Should not perform request to path \(path)")
+            return .emptySuccessResponse()
+        }
+
+        stub(condition: isPath("/force-server-failure")) { _ in
+            return .serverDownResponse()
+        }
+
+        self.client = self.createClient(
+            .init(
+                platformInfo: nil,
+                finishTransactions: false,
+                apiKey: "api_key",
+                dangerousSettings: .init(
+                    autoSyncPurchases: true,
+                    internalSettings: DangerousSettings.Internal(forceServerErrorStrategy: .allServersDown)
+                ),
+                preferredLocalesProvider: .mock()
+            )
+        )
+
+        let response: BodyWithDateResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+
+        expect(response).to(beFailure())
+        expect(response?.error).to(matchError(NetworkError.errorResponse(
+            ErrorResponse.defaultResponse,
+            .internalServerError)
+        ))
+    }
+
+    func testNilforceServerErrorStrategyCallsTheOriginalPath() throws {
+        let path: HTTPRequest.Path = .logIn
+
+        let mockedResponse = BodyWithDate(data: "test", requestDate: Date())
+        let encodedResponse = try mockedResponse.jsonEncodedData
+        stub(condition: isPath(path)) { _ in
+            return HTTPStubsResponse(
+                data: encodedResponse,
+                statusCode: .success,
+                headers: nil
+            )
+        }
+
+        stub(condition: isPath("/force-server-failure")) { _ in
+            fail("Should not perform request to \"/force-server-failure path\"")
+            return .serverDownResponse()
+        }
+
+        self.client = self.createClient(
+            .init(
+                platformInfo: nil,
+                finishTransactions: false,
+                apiKey: "api_key",
+                dangerousSettings: .init(
+                    autoSyncPurchases: true,
+                    internalSettings: DangerousSettings.Internal(forceServerErrorStrategy: nil)
+                ),
+                preferredLocalesProvider: .mock()
+            )
+        )
+
+        let response: BodyWithDateResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+
+        expect(response).to(beSuccess())
+    }
+
+    func testforceServerErrorStrategyPerformingRequestCallsTheOriginalPath() throws {
+        let path: HTTPRequest.Path = .logIn
+
+        let mockedResponse = BodyWithDate(data: "test", requestDate: Date())
+        let encodedResponse = try mockedResponse.jsonEncodedData
+        stub(condition: isPath(path)) { _ in
+            return HTTPStubsResponse(
+                data: encodedResponse,
+                statusCode: .success,
+                headers: nil
+            )
+        }
+
+        stub(condition: isPath("/force-server-failure")) { _ in
+            fail("Should not perform request to \"/force-server-failure path\"")
+            return .serverDownResponse()
+        }
+
+        self.client = self.createClient(
+            .init(
+                platformInfo: nil,
+                finishTransactions: false,
+                apiKey: "api_key",
+                dangerousSettings: .init(
+                    autoSyncPurchases: true,
+                    internalSettings: DangerousSettings.Internal(forceServerErrorStrategy: .init { _ in
+                        return .performRequest
+                    })
+                ),
+                preferredLocalesProvider: .mock()
+            )
+        )
+
+        let response: BodyWithDateResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+
+        expect(response).to(beSuccess())
+    }
+
+    func testRedirectIsLogged() throws {
+        // Task delegate is only available after iOS 15.
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        let pathA: HTTPRequest.Path = .logIn
+        let pathB: HTTPRequest.Path = .health
+
+        let responseData = "{\"message\": \"something is great up in the cloud\"}".asData
+
+        stub(condition: isPath(pathA)) { _ in
+            return HTTPStubsResponse(
+                data: .init(),
+                statusCode: .temporaryRedirect,
+                headers: [
+                    HTTPClient.ResponseHeader.location.rawValue: pathB.url!.absoluteString
+                ]
+            )
+        }
+        stub(condition: isPath(pathB)) { _ in
+            return HTTPStubsResponse(
+                data: responseData,
+                statusCode: .success,
+                headers: nil
+            )
+        }
+
+        let response: DataResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: pathA), completionHandler: completion)
+        }
+
+        expect(response).to(beSuccess())
+        expect(response?.value?.body) == responseData
+
+        self.logger.verifyMessageWasLogged(
+            "Performing redirect from '\(pathA.url!.absoluteString)' to '\(pathB.url!.absoluteString)'",
+            level: .debug
+        )
+    }
+
+    func testNormalResponsesAreNotDetectedAsLoadSheddder() throws {
+        let path: HTTPRequest.Path = .logIn
+
+        stub(condition: isPath(path)) { _ in
+            return HTTPStubsResponse(
+                data: .init(),
+                statusCode: .success,
+                headers: [:]
+            )
+        }
+
+        let response: DataResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+        expect(response).to(beSuccess())
+
+        self.logger.verifyMessageWasNotLogged(Strings.network.request_handled_by_load_shedder(path))
+    }
+
+    func testLoadShedderResponsesAreLogged() throws {
+        let path: HTTPRequest.Path = .logIn
+
+        stub(condition: isPath(path)) { _ in
+            return HTTPStubsResponse(
+                data: .init(),
+                statusCode: .success,
+                headers: [
+                    HTTPClient.ResponseHeader.isLoadShedder.rawValue: "true"
+                ]
+            )
+        }
+
+        let response: DataResponse? = waitUntilValue { completion in
+            self.client.perform(.init(method: .get, path: path), completionHandler: completion)
+        }
+        expect(response).to(beSuccess())
+
+        self.logger.verifyMessageWasLogged(
+            Strings.network.request_handled_by_load_shedder(path),
+            level: .debug
+        )
+    }
+
+    // - MARK: Diagnostics http request performed tracking
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    func testDiagnosticsHttpRequestPerformedTrackedOnSuccess() throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        stub(condition: isPath(request.path)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        // swiftlint:disable:next force_cast
+        let mockDiagnosticsTracker = self.diagnosticsTracker as! MockDiagnosticsTracker
+        expect(mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.count).toEventually(equal(1))
+        guard let trackedParams = mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.first else {
+            fail("Should have at least one call to tracked diagnostics")
+            return
+        }
+        expect(trackedParams).to(matchTrackParams((
+            "log_in",
+            "api.revenuecat.com",
+            -1, // Any
+            true,
+            200,
+            nil,
+            .backend,
+            .notRequested,
+            false,
+            nil
+        )))
+    }
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    func testDiagnosticsHttpRequestPerformedTrackedOnError() async throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        stub(condition: isPath(request.path)) { _ in
+            let json = "{\"code\": 7225, \"message\": \"Invalid API key\"}"
+            return HTTPStubsResponse(data: json.data(using: String.Encoding.utf8)!,
+                                     statusCode: .unauthorized,
+                                     headers: [
+                                        HTTPClient.ResponseHeader.contentType.rawValue: "application/json"
+                                    ])
+        }
+
+        await waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        // swiftlint:disable:next force_cast
+        let mockDiagnosticsTracker = self.diagnosticsTracker as! MockDiagnosticsTracker
+        await expect(mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.count).toEventually(equal(1))
+        guard let trackedParams = mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.first else {
+            fail("Should have at least one call to tracked diagnostics")
+            return
+        }
+        expect(trackedParams).to(matchTrackParams((
+            "log_in",
+            "api.revenuecat.com",
+            -1, // Any
+            false,
+            401,
+            7225,
+            nil,
+            .notRequested,
+            false,
+            .other
+        )))
+    }
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    func testDiagnosticsHttpRequestPerformedTrackedOnTimeoutError() async throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let timeoutError = NSError(
+            domain: NSURLErrorDomain,
+            code: NSURLErrorTimedOut,
+            userInfo: [NSLocalizedDescriptionKey: "The request timed out."]
+        )
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(error: timeoutError)
+        }
+
+        await waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        // swiftlint:disable:next force_cast
+        let mockDiagnosticsTracker = self.diagnosticsTracker as! MockDiagnosticsTracker
+        await expect(mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.count).toEventually(equal(1))
+        guard let trackedParams = mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.first else {
+            fail("Should have at least one call to tracked diagnostics")
+            return
+        }
+        expect(trackedParams).to(matchTrackParams((
+            "log_in",
+            "api.revenuecat.com",
+            -1, // Any
+            false,
+            -1, // No HTTP status code for connection errors
+            nil,
+            nil,
+            .notRequested,
+            false,
+            .timeout
+        )))
+    }
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    func testDiagnosticsHttpRequestPerformedTrackedOnNoNetworkError() async throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let noNetworkError = NSError(
+            domain: NSURLErrorDomain,
+            code: NSURLErrorNotConnectedToInternet,
+            userInfo: [NSLocalizedDescriptionKey: "The Internet connection appears to be offline."]
+        )
+
+        stub(condition: isPath(request.path)) { _ in
+            return HTTPStubsResponse(error: noNetworkError)
+        }
+
+        await waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        // swiftlint:disable:next force_cast
+        let mockDiagnosticsTracker = self.diagnosticsTracker as! MockDiagnosticsTracker
+        await expect(mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.count).toEventually(equal(1))
+        guard let trackedParams = mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.first else {
+            fail("Should have at least one call to tracked diagnostics")
+            return
+        }
+        expect(trackedParams).to(matchTrackParams((
+            "log_in",
+            "api.revenuecat.com",
+            -1, // Any
+            false,
+            -1, // No HTTP status code for connection errors
+            nil,
+            nil,
+            .notRequested,
+            false,
+            .noNetwork
+        )))
+    }
+
+    @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
+    func testDiagnosticsHttpRequestPerformedTrackedOnFallbackHost() throws {
+        try AvailabilityChecks.iOS15APIAvailableOrSkipTest()
+
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+        let mainPath = request.path
+        let fallbackHost = try XCTUnwrap(mainPath.fallbackUrls.first?.host,
+                                         "This test requires at least 1 fallback host")
+
+        let serverErrorResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.internalServerError,
+            headers: nil
+        )
+
+        let mainHost = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(mainHost)) { _ in
+            return serverErrorResponse
+        }
+
+        let successfulResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.success,
+            headers: nil
+        )
+
+        stub(condition: isHost(fallbackHost)) { _ in
+            return successfulResponse
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        // swiftlint:disable:next force_cast
+        let mockDiagnosticsTracker = self.diagnosticsTracker as! MockDiagnosticsTracker
+        expect(mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value.count).to(equal(2))
+
+        let trackedParams0 = mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value[0]
+        let trackedParams1 = mockDiagnosticsTracker.trackedHttpRequestPerformedParams.value[1]
+        expect(trackedParams0).to(matchTrackParams((
+            "get_product_entitlement_mapping",
+            "api.revenuecat.com",
+            -1,
+            false,
+            500,
+            0,
+            nil,
+            .notRequested,
+            false,
+            .other
+        )))
+        expect(trackedParams1).to(matchTrackParams((
+            "get_product_entitlement_mapping",
+            "api-production.8-lives-cat.io",
+            -1, // Any
+            true,
+            200,
+            nil,
+            .backend,
+            .notRequested,
+            false,
+            nil
+        )))
+    }
+
+}
+
+// MARK: - HttpClient.Request Tests
+extension HTTPClientTests {
+    func testNewRequestHasNoRetries() {
+        let request = buildEmptyRequest(isRetryable: true)
+
+        expect(request.retried).to(beFalse())
+        expect(request.retryCount).to(equal(0))
+    }
+
+    func testRetryingRequestIncrementsRetryCount() {
+        let request = buildEmptyRequest(isRetryable: true)
+
+        let retriedRequest = request.retriedRequest()
+        let secondRetriedRequest = retriedRequest.retriedRequest()
+
+        expect(retriedRequest.retried).to(beTrue())
+        expect(retriedRequest.retryCount).to(equal(1))
+
+        expect(secondRetriedRequest.retried).to(beTrue())
+        expect(secondRetriedRequest.retryCount).to(equal(2))
+    }
+
+    func testRetryingRequestKeepsfallbackUrlIndex() throws {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+        let nextFallbackHostRequest = try XCTUnwrap(request.requestWithNextFallbackHost(proxyURL: nil))
+
+        let retriedRequest = nextFallbackHostRequest.retriedRequest()
+        let secondRetriedRequest = nextFallbackHostRequest.retriedRequest()
+
+        expect(retriedRequest.fallbackUrlIndex).to(equal(0))
+        expect(secondRetriedRequest.fallbackUrlIndex).to(equal(0))
+    }
+
+    private func buildEmptyRequest(
+        isRetryable: Bool,
+        hasFallbackUrls: Bool = false
+    ) -> HTTPClient.Request {
+        let completionHandler: HTTPClient.Completion<CustomerInfo> = { _ in return }
+
+        let path: HTTPRequest.Path
+        if hasFallbackUrls {
+            path = .getOfferings(appUserID: "abc123")
+            expect(path.fallbackUrls).toNot(
+                beEmpty(),
+                description: "This test requires a path that has at least 1 fallback host"
+            )
+        } else {
+            path = .getCustomerInfo(appUserID: "abc123")
+        }
+
+        let request: HTTPClient.Request = .init(
+            httpRequest: .init(method: .get, path: path, isRetryable: isRetryable),
+            authHeaders: .init(),
+            defaultHeaders: .init(),
+            verificationMode: .default,
+            internalSettings: DangerousSettings.Internal.default,
+            completionHandler: completionHandler
+        )
+
+        return request
+    }
+}
+
+// MARK: - HttpClient Retry Tests
+extension HTTPClientTests {
+
+    func testOnlyRetriesProvidedHTTPStatusCodesIfIsRetryableHeaderMissing() {
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+        )).to(beTrue())
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.invalidRequest.rawValue,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+        )).to(beFalse())
+    }
+
+    func testWontRetryIfIsRetryableHeaderFalse() {
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "false"
+                ]
+            )!
+        )).to(beFalse())
+
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "False"
+                ]
+            )!
+        )).to(beFalse())
+
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "FALSE"
+                ]
+            )!
+        )).to(beFalse())
+    }
+
+    func testWillRetryIfIsRetryableHeaderTrue() {
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "true"
+                ]
+            )!
+        )).to(beTrue())
+
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "True"
+                ]
+            )!
+        )).to(beTrue())
+
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "TRUE"
+                ]
+            )!
+        )).to(beTrue())
+    }
+
+    func testWillNotRetryIfIsRetryableHeaderTrueButStatusCodeIsNotRetryable() {
+        expect(self.client.isResponseRetryable(
+            HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.success.rawValue,
+                httpVersion: nil,
+                headerFields: [
+                    HTTPClient.ResponseHeader.isRetryable.rawValue: "true"
+                ]
+            )!
+        )).to(beFalse())
+    }
+
+    // Backoff Time Tests
+    func testUsesNoBackoffIfFirstRetryAndNoETagPresent() {
+        var httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [:]
+        )!
+
+        var backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 1)
+        expect(backoffPeriod).to(equal(TimeInterval(0)))
+
+        httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [HTTPClient.ResponseHeader.eTag.rawValue: ""]
+        )!
+
+        backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 1)
+        expect(backoffPeriod).to(equal(TimeInterval(0)))
+    }
+
+    func testUsesBackoffIfFirstRetryAndETagPresent() {
+        var httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [:]
+        )!
+
+        var backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 1)
+        expect(backoffPeriod).to(equal(TimeInterval(0)))
+
+        httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [HTTPClient.ResponseHeader.eTag.rawValue: "some-etag-value"]
+        )!
+
+        backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 1)
+        expect(backoffPeriod).to(equal(TimeInterval(0)))
+    }
+
+    func testUsesServerProvidedBackoffIfPresent() {
+        let retryAfterSeconds = 100
+
+        var httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [
+                HTTPClient.ResponseHeader.retryAfter.rawValue: "\(retryAfterSeconds)"
+            ]
+        )!
+
+        var backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 2)
+        expect(backoffPeriod).to(equal(TimeInterval(retryAfterSeconds)))
+
+        let retryAfterSecondsDecimal = 10.5
+        httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [
+                HTTPClient.ResponseHeader.retryAfter.rawValue: "\(retryAfterSecondsDecimal)"
+            ]
+        )!
+
+        backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 2)
+        expect(backoffPeriod).to(equal(TimeInterval(retryAfterSecondsDecimal)))
+    }
+
+    func testUses0msBackoffIfServerProvidedBackoffIsNegative() {
+        let httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [
+                HTTPClient.ResponseHeader.retryAfter.rawValue: "-1"
+            ]
+        )!
+
+        let backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 2)
+        expect(backoffPeriod).to(equal(TimeInterval(0)))
+    }
+
+    func testUses1hourBackoffIfServerProvidedBackoffIsGreaterThan1hour() {
+        let oneHourInSeconds = 3_600
+        let httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [
+                HTTPClient.ResponseHeader.retryAfter.rawValue: "\(oneHourInSeconds * 2)"
+            ]
+        )!
+
+        let backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 2)
+        expect(backoffPeriod).to(equal(TimeInterval(Double(oneHourInSeconds))))
+    }
+
+    func testUsesDefaultBackoffIfServerProvidedBackoffIsEmptyString() {
+        let httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [
+                HTTPClient.ResponseHeader.retryAfter.rawValue: ""
+            ]
+        )!
+
+        let backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 2)
+        expect(backoffPeriod).to(equal(TimeInterval(0.75)))
+    }
+
+    func testUsesDefaultBackoffIfServerProvidedBackoffMissing() {
+        let httpURLResponse = HTTPURLResponse(
+            url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+            statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+            httpVersion: nil,
+            headerFields: [:]
+        )!
+
+        let backoffPeriod = self.client.calculateRetryBackoffTime(forResponse: httpURLResponse, retryCount: 2)
+        expect(backoffPeriod).to(equal(TimeInterval(0.75)))
+    }
+
+    func testPerformsAllRetriesIfAlwaysGetsRetryableStatusCode() throws {
+        var requestCount = 0
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            requestCount += 1
+            return .emptyTooManyRequestsResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .receiptPath, isRetryable: true)
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        expect(requestCount).to(equal(4)) // 1 original request + 3 retries
+
+        expect(result).toNot(beNil())
+        expect(result).to(beFailure())
+
+        let error = try XCTUnwrap(result?.error)
+        expect(error) == .errorResponse(
+            .init(code: .unknownError,
+                  originalCode: 0,
+                  message: nil),
+            .tooManyRequests
+        )
+        expect(error.isServerDown) == false
+    }
+
+    func testCorrectDelaysAreSentToOperationDispatcherForRetries() throws {
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            return .emptyTooManyRequestsResponse()
+        }
+
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let request = HTTPRequest(method: .get, path: .receiptPath, isRetryable: true)
+        _ = waitUntilValue { completion in
+            client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeIntervalCount).to(equal(3))
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeIntervalParams).to(equal([
+            TimeInterval(0),
+            TimeInterval(0.75),
+            TimeInterval(3)
+        ]))
+    }
+
+    func testRetryMessagesAreLoggedWhenRetriesExhausted() throws {
+        var requestCount = 0
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            requestCount += 1
+            return .emptyTooManyRequestsResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .receiptPath, isRetryable: true)
+        _ = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        self.logger.verifyMessageWasLogged(
+            "Queued request GET /v1/receipts for retry number 1 in 0.0 seconds."
+        )
+        self.logger.verifyMessageWasLogged(
+            "Queued request GET /v1/receipts for retry number 2 in 0.75 seconds."
+        )
+        self.logger.verifyMessageWasLogged(
+            "Queued request GET /v1/receipts for retry number 3 in 3.0 seconds."
+        )
+        self.logger.verifyMessageWasLogged("Request GET /v1/receipts failed all 3 retries.")
+    }
+
+    func testRetryMessagesAreNotLoggedWhenNoRetriesOccur() throws {
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        _ = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        self.logger.verifyMessageWasNotLogged(
+            "Queued request GET /v1/subscribers/identify for retry number 1 in 0.0 seconds."
+        )
+        self.logger.verifyMessageWasNotLogged(
+            "Queued request GET /v1/subscribers/identify for retry number 2 in 0.75 seconds."
+        )
+        self.logger.verifyMessageWasNotLogged(
+            "Queued request GET /v1/subscribers/identify for retry number 3 in 3.0 seconds."
+        )
+        self.logger.verifyMessageWasNotLogged("Request GET /v1/subscribers/identify failed all 3 retries.")
+    }
+
+    func testRetryCountHeaderIsAccurateWithNoRetries() throws {
+        var retryCountHeaderValues: [String?] = []
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { urlRequest in
+            let retryCountHeaderValue = urlRequest.allHTTPHeaderFields?[HTTPClient.RequestHeader.retryCount.rawValue]
+            retryCountHeaderValues.append(retryCountHeaderValue)
+
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        _ = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        expect(retryCountHeaderValues).to(equal(["0"]))
+    }
+
+    func testDoesNotRetryUnsupportedURLPaths() throws {
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        var requestCount = 0
+        stub(condition: isHost(host)) { _ in
+            requestCount += 1
+            return .emptyTooManyRequestsResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath) // This is the logIn path
+        _ = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        expect(requestCount).to(equal(1))
+    }
+
+    func testRetryCountHeaderIsAccurateWithOnlyOneRetry() throws {
+        var retryCountHeaderValues: [String?] = []
+        var retryCount = 0
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { urlRequest in
+            let retryCountHeaderValue = urlRequest.allHTTPHeaderFields?[HTTPClient.RequestHeader.retryCount.rawValue]
+            retryCountHeaderValues.append(retryCountHeaderValue)
+
+            if retryCount == 0 {
+                retryCount += 1
+                return .emptyTooManyRequestsResponse()
+            } else {
+                retryCount += 1
+                return .emptySuccessResponse()
+            }
+        }
+
+        let request = HTTPRequest(method: .get, path: .receiptPath, isRetryable: true)
+        _ = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        expect(retryCountHeaderValues).to(equal(["0", "1"]))
+    }
+
+    func testRetryCountHeaderIsAccurateWhenAllRetriesAreExhausted() throws {
+        var retryCountHeaderValues: [String?] = []
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { urlRequest in
+            let retryCountHeaderValue = urlRequest.allHTTPHeaderFields?[HTTPClient.RequestHeader.retryCount.rawValue]
+            retryCountHeaderValues.append(retryCountHeaderValue)
+
+            return .emptyTooManyRequestsResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .receiptPath, isRetryable: true)
+        _ = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        expect(retryCountHeaderValues).to(equal(["0", "1", "2", "3"]))
+    }
+
+    func testSucceedsIfAlwaysGetsSuccessAfterOneRetry() throws {
+        var requestCount = 0
+
+        let host = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host)) { _ in
+            requestCount += 1
+
+            if requestCount >= 2 {
+                return .emptySuccessResponse()
+            } else {
+                return .emptyTooManyRequestsResponse()
+            }
+        }
+
+        let request = HTTPRequest(method: .get, path: .receiptPath, isRetryable: true)
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+        expect(requestCount).to(equal(2)) // 1 original request + 1 retries
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+
+        self.logger.verifyMessageWasLogged(
+            "Queued request GET /v1/receipts for retry number 1 in 0.0 seconds."
+        )
+        self.logger.verifyMessageWasNotLogged(
+            "Queued request GET /v1/receipts for retry number 2 in 0.75 seconds."
+        )
+        self.logger.verifyMessageWasNotLogged(
+            "Queued request GET /v1/receipts for retry number 3 in 3.0 seconds."
+        )
+        self.logger.verifyMessageWasNotLogged(
+            "Request GET /v1/receipts failed all 3 retries."
+        )
+
+        expect(self.signing.requests).to(beEmpty())
+    }
+
+    func testRetryRequestIfNeededDoesntRetryRequestWithNilHTTPURLResponse() {
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let didRetry = client.retryRequestIfNeeded(
+            request: buildEmptyRequest(isRetryable: true),
+            httpURLResponse: nil
+        )
+
+        expect(didRetry).to(beFalse())
+    }
+
+    func testRetryRequestIfNeededDoesntRetryRequestWithNonRetryableHTTPStatusCode() {
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let didRetry = client.retryRequestIfNeeded(
+            request: buildEmptyRequest(isRetryable: true),
+            httpURLResponse: HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.success.rawValue,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
+
+        expect(didRetry).to(beFalse())
+    }
+
+    func testRetryRequestIfNeededDoesntRetryRequestWithTooManyExistingRetries() {
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let requestThatHasBeenRetriedManyTimes = buildEmptyRequest(isRetryable: true)
+            .retriedRequest()
+            .retriedRequest()
+            .retriedRequest()
+            .retriedRequest()
+            .retriedRequest()
+            .retriedRequest()
+
+        let didRetry = client.retryRequestIfNeeded(
+            request: requestThatHasBeenRetriedManyTimes,
+            httpURLResponse: HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
+
+        expect(didRetry).to(beFalse())
+    }
+
+    func testRetryRequestIfNeededRetriesEligibleRequest() {
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let requestThatHasBeenRetriedManyTimes = buildEmptyRequest(isRetryable: true)
+
+        let didRetry = client.retryRequestIfNeeded(
+            request: requestThatHasBeenRetriedManyTimes,
+            httpURLResponse: HTTPURLResponse(
+                url: URL(string: "https://api.revenuecat.com/v1/receipts")!,
+                statusCode: HTTPStatusCode.tooManyRequests.rawValue,
+                httpVersion: nil,
+                headerFields: nil
+            )
+        )
+
+        expect(didRetry).to(beTrue())
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeInterval).to(beTrue())
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeIntervalCount).to(equal(1))
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeIntervalParam).to(equal(0))
+    }
+
+    // MARK: - Fallback Host Retry Tests
+
+    func testNewRequestStartsWithMainPath() {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+        expect(request.fallbackUrlIndex).to(beNil())
+    }
+
+    func testNextFallbackHostRequestIncrementsfallbackUrlIndex() throws {
+        var request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let fallbacksCount = request.httpRequest.path.fallbackUrls.count
+        for iteration in 0..<fallbacksCount {
+            request = try XCTUnwrap(request.requestWithNextFallbackHost(proxyURL: nil))
+            expect(request.fallbackUrlIndex).to(equal(iteration))
+        }
+    }
+
+    func testNextFallbackHostRequestReturnsNilIfProxyURLIsUsed() throws {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let proxyURL = try XCTUnwrap(URL(string: "https://proxy.com"))
+        let nextRequest = request.requestWithNextFallbackHost(proxyURL: proxyURL)
+
+        expect(nextRequest).to(beNil())
+    }
+
+    func testNextFallbackHostRequestKeepsRetryCount() throws {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let retriedRequest = request.retriedRequest()
+        let nextFallbackHostRequest = try XCTUnwrap(retriedRequest.requestWithNextFallbackHost(proxyURL: nil))
+        expect(nextFallbackHostRequest.retryCount).to(equal(1))
+    }
+
+    func testRequestWithNextFallbackHostReturnsNilIfNoMoreHosts() throws {
+        var nextRequest = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let fallbacksCount = nextRequest.httpRequest.path.fallbackUrls.count
+        for _ in 0..<fallbacksCount {
+            nextRequest = try XCTUnwrap(nextRequest.requestWithNextFallbackHost(proxyURL: nil))
+        }
+        let noMoreHostsRequest = nextRequest.requestWithNextFallbackHost(proxyURL: nil)
+        expect(noMoreHostsRequest).to(beNil())
+    }
+
+    func testRetriesWithNextFallbackHostOnServerError() throws {
+        let request = HTTPRequest(method: .get, path: .mockPathWithFallbacks)
+        let mainPath = request.path
+        let fallbackHost = try XCTUnwrap(mainPath.fallbackUrls.first, "This test requires at least 1 fallback host")
+
+        let serverErrorResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.internalServerError,
+            headers: nil
+        )
+
+        let host1 = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host1)) { _ in
+            return serverErrorResponse
+        }
+
+        let successfulResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.success,
+            headers: nil
+        )
+
+        let host2 = try XCTUnwrap(fallbackHost.host)
+        stub(condition: isHost(host2)) { _ in
+            return successfulResponse
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.error).to(beNil())
+    }
+
+    func testRetriesWithNextFallbackHostOnDNSError() throws {
+        let request = HTTPRequest(method: .get, path: .mockPathWithFallbacks)
+        let mainPath = request.path
+        let fallbackHost = try XCTUnwrap(mainPath.fallbackUrls.first, "This test requires at least 1 fallback host")
+
+        let dnsError = NSError(
+            domain: NSURLErrorDomain,
+            code: NSURLErrorCannotFindHost,
+            userInfo: [NSLocalizedDescriptionKey: "A server with the specified hostname could not be found."]
+        )
+        let dnsErrorResponse = HTTPStubsResponse(error: dnsError)
+
+        let host1 = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host1)) { _ in
+            return dnsErrorResponse
+        }
+
+        let successfulResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.success,
+            headers: nil
+        )
+
+        let host2 = try XCTUnwrap(fallbackHost.host)
+        stub(condition: isHost(host2)) { _ in
+            return successfulResponse
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.error).to(beNil())
+    }
+
+    func testRetriesWithNextFallbackHostOnTimeout() throws {
+        let request = HTTPRequest(method: .get, path: .mockPathWithFallbacks)
+        let mainPath = request.path
+        let fallbackHost = try XCTUnwrap(mainPath.fallbackUrls.first, "This test requires at least 1 fallback host")
+
+        let timeoutError = NSError(
+            domain: NSURLErrorDomain,
+            code: NSURLErrorTimedOut,
+            userInfo: [NSLocalizedDescriptionKey: "The request timed out."]
+        )
+        let timeoutResponse = HTTPStubsResponse(error: timeoutError)
+
+        let host1 = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host1)) { _ in
+            return timeoutResponse
+        }
+
+        let successfulResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.success,
+            headers: nil
+        )
+
+        let host2 = try XCTUnwrap(fallbackHost.host)
+        stub(condition: isHost(host2)) { _ in
+            return successfulResponse
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beSuccess())
+        expect(result?.error).to(beNil())
+    }
+
+    func testReturnsLastErrorWhenRetriedWithNextFallbackHost() throws {
+        let request = HTTPRequest(method: .get, path: .mockPathWithFallbacks)
+        let mainPath = request.path
+        let fallbackHost = try XCTUnwrap(mainPath.fallbackUrls.first, "This test requires at least 1 fallback ost")
+
+        let serverErrorResponse = HTTPStubsResponse(
+            data: Data(),
+            statusCode: HTTPStatusCode.internalServerError,
+            headers: nil
+        )
+
+        let host1 = try XCTUnwrap(SystemInfo.apiBaseURL.host)
+        stub(condition: isHost(host1)) { _ in
+            return serverErrorResponse
+        }
+
+        let host2 = try XCTUnwrap(fallbackHost.host)
+        stub(condition: isHost(host2)) { _ in
+            return .emptyTooManyRequestsResponse()
+        }
+
+        let result = waitUntilValue { completion in
+            self.client.perform(request) { (response: EmptyResponse) in
+                completion(response)
+            }
+        }
+
+        expect(result).toNot(beNil())
+        expect(result).to(beFailure())
+        expect(result?.error) == .errorResponse(
+            .init(code: .unknownError,
+                  originalCode: 0,
+                  message: nil),
+            .tooManyRequests
+        )
+        expect(result?.error?.isServerDown) == false
+    }
+
+    func testRetriesWithNextFallbackHostImmediatelyForInternalServerError() throws {
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let didRetry = client.retryRequestWithNextFallbackHostIfNeeded(
+            request: request,
+            error: .serverDown()
+        )
+
+        expect(didRetry).to(beTrue())
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeInterval).to(beFalse())
+    }
+
+    func testRetriesWithNextFallbackHostImmediatelyForUnexpectedResponse() throws {
+        let mockOperationDispatcher = MockOperationDispatcher()
+        let client = self.createClient(self.systemInfo, operationDispatcher: mockOperationDispatcher)
+
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let didRetry = client.retryRequestWithNextFallbackHostIfNeeded(
+            request: request,
+            error: .unexpectedResponse(nil)
+        )
+
+        expect(didRetry).to(beTrue())
+        expect(mockOperationDispatcher.invokedDispatchOnWorkerThreadWithTimeInterval).to(beFalse())
+    }
+
+    func testIncrementsHostIndexOnRetry() throws {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let didRetry = self.client.retryRequestWithNextFallbackHostIfNeeded(
+            request: request,
+            error: .serverDown()
+        )
+
+        expect(didRetry).to(beTrue())
+        expect(request.fallbackUrlIndex).to(beNil()) // Original request should not use a fallback host
+    }
+
+    func testDoesNotIncrementRetryCountOnHostRetry() throws {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let didRetry = self.client.retryRequestWithNextFallbackHostIfNeeded(
+            request: request,
+            error: NetworkError.serverDown()
+        )
+
+        expect(didRetry).to(beTrue())
+        expect(request.retryCount) == 0
+    }
+
+    func testDoesNotRetryWithNextFallbackHostForNonServerError() throws {
+        let request = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+
+        let didRetry = self.client.retryRequestWithNextFallbackHostIfNeeded(
+            request: request,
+            error: NetworkError.errorResponse(
+                ErrorResponse(
+                    code: .unknownBackendError,
+                    originalCode: BackendErrorCode.unknownBackendError.rawValue
+                ),
+                HTTPStatusCode.tooManyRequests
+            )
+        )
+
+        expect(didRetry).to(beFalse())
+    }
+
+    func testDoesNotRetryWithNextFallbackHostWhenNoMorePathsAvailable() throws {
+        var nextRequest = buildEmptyRequest(isRetryable: true, hasFallbackUrls: true)
+        let fallbacksCount = nextRequest.httpRequest.path.fallbackUrls.count
+
+        for _ in 0..<fallbacksCount {
+            nextRequest = try XCTUnwrap(nextRequest.requestWithNextFallbackHost(proxyURL: nil))
+        }
+
+        let didRetry = self.client.retryRequestWithNextFallbackHostIfNeeded(
+            request: nextRequest,
+            error: .serverDown()
+        )
+
+        expect(didRetry).to(beFalse())
+    }
+
+    // MARK: - Custom API Base URL
+
+    func testUsesDefaultAPIBaseURL() throws {
+        let request = HTTPRequest(method: .get, path: .mockPath)
+        let defaultHost = "api.revenuecat.com"
+
+        let hostCorrect: Atomic<Bool> = false
+        stub(condition: isHost(defaultHost)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testUsesCustomAPIBaseURL() {
+        let originalURL = SystemInfo.apiBaseURL
+        defer { SystemInfo.apiBaseURL = originalURL }
+
+        let customHost = "custom.example.com"
+        let customURL = URL(string: "https://\(customHost)")!
+        SystemInfo.apiBaseURL = customURL
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        let hostCorrect: Atomic<Bool> = false
+        stub(condition: isHost(customHost)) { _ in
+            hostCorrect.value = true
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in completion() }
+        }
+
+        expect(hostCorrect.value) == true
+    }
+
+    func testCustomAPIBaseURLPersistsAcrossRequests() {
+        let originalURL = SystemInfo.apiBaseURL
+        defer { SystemInfo.apiBaseURL = originalURL }
+
+        let customHost = "test.example.com"
+        let customURL = URL(string: "https://\(customHost)")!
+        SystemInfo.apiBaseURL = customURL
+
+        let requestCount: Atomic<Int> = .init(0)
+        stub(condition: isHost(customHost)) { _ in
+            requestCount.value += 1
+            return .emptySuccessResponse()
+        }
+
+        let request = HTTPRequest(method: .get, path: .mockPath)
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: EmptyResponse) in
+                // Perform a second request
+                self.client.perform(request) { (_: EmptyResponse) in
+                    completion()
+                }
+            }
+        }
+
+        expect(requestCount.value) == 2
+    }
+
+}
+
+// swiftlint:disable large_tuple
+// swiftlint:disable line_length
+
+private func matchTrackParams(
+    _ data: (String, String?, TimeInterval, Bool, Int, Int?, HTTPResponseOrigin?, VerificationResult, Bool, ConnectionErrorReason?)
+) -> Nimble.Predicate<(String, String?, TimeInterval, Bool, Int, Int?, HTTPResponseOrigin?, VerificationResult, Bool, ConnectionErrorReason?)> {
+    return .init {
+        let other = try $0.evaluate()
+        let timeInterval = other?.2 ?? -1
+        let matches = (other?.0 == data.0 &&
+                       other?.1 == data.1 &&
+                       timeInterval > 0 && timeInterval.isLess(than: 1) &&
+                       other?.3 == data.3 &&
+                       other?.4 == data.4 &&
+                       other?.5 == data.5 &&
+                       other?.6 == data.6 &&
+                       other?.7 == data.7 &&
+                       other?.8 == data.8 &&
+                       other?.9 == data.9)
+
+        return .init(bool: matches, message: .fail("Diagnostics tracked params do not match"))
+    }
+}
+
+// swiftlint:enable large_tuple
+// swiftlint:enable line_length
+
+func isPath(_ path: HTTPRequestPath) -> HTTPStubsTestBlock {
+    return isPath(path.relativePath)
+}
+
+extension HTTPStubsResponse {
+
+    static func emptySuccessResponse() -> HTTPStubsResponse {
+        // `HTTPStubsResponse` doesn't have value semantics, it's a mutable class!
+        // This creates a new response each time so modifications in one test don't affect others.
+        return .init(data: Data(),
+                     statusCode: .success,
+                     headers: nil)
+    }
+
+    static func emptyTooManyRequestsResponse() -> HTTPStubsResponse {
+        // `HTTPStubsResponse` doesn't have value semantics, it's a mutable class!
+        // This creates a new response each time so modifications in one test don't affect others.
+        return .init(data: Data(),
+                     statusCode: .tooManyRequests,
+                     headers: nil)
+    }
+
+    static func serverDownResponse() -> HTTPStubsResponse {
+        return .init(data: Data(),
+                     statusCode: .internalServerError,
+                     headers: nil)
+    }
+
+    static func notFoundRespoonse() -> HTTPStubsResponse {
+        return .init(data: Data(),
+                     statusCode: .notFoundError,
+                     headers: nil)
+    }
+
+    static func timeoutResponse() -> HTTPStubsResponse {
+        return .init(error: URLError(.timedOut))
+    }
+
+    convenience init(data: Data, statusCode: HTTPStatusCode, headers: HTTPClient.RequestHeaders?) {
+        self.init(data: data, statusCode: Int32(statusCode.rawValue), headers: headers)
+    }
+
+}
+
+// MARK: - Extensions
+
+private extension BaseHTTPClientTests {
+
+    static func extractRequestNumber(from urlRequest: URLRequest) -> Int? {
+        do {
+            let requestData = try XCTUnwrap(urlRequest.ohhttpStubs_httpBody)
+            let body = try JSONDecoder.default.decode(
+                AnyEncodableRequestBody.self,
+                from: requestData
+            ).body
+
+            let dictionary = try XCTUnwrap(body.value as? [String: Any])
+            let number = dictionary[Self.requestNumberKeyName]
+
+            return try XCTUnwrap(number as? Int)
+        } catch {
+            XCTFail("Couldn't extract the request number from the URLRequest")
+            return nil
+        }
+    }
+
+    static var requestNumberKeyName: String { "request_number" }
+
+}
+
+extension BaseHTTPClientTests {
+
+    struct BodyWithDate: Equatable, Codable, HTTPResponseBody {
+        var data: String
+        var requestDate: Date
+
+        func copy(with newRequestDate: Date) -> Self {
+            var copy = self
+            copy.requestDate = newRequestDate
+            return copy
+        }
+    }
+
+    struct BodyWithSignature: HTTPRequestBody, Equatable {
+        var key1: String
+        var key2: String
+
+        var contentForSignature: [(key: String, value: String?)] {
+            return [
+                ("key1", self.key1),
+                ("key2", self.key2)
+            ]
+        }
+    }
+
+}
+
+extension HTTPRequest.Path {
+
+    // Doesn't matter which path this is, we stub requests to it.
+    static let mockPath: Self = .logIn
+    static let mockPathWithFallbacks: Self = .getProductEntitlementMapping
+    static let receiptPath: Self = .postReceiptData
+
+}
+
+extension HTTPRequest.Method {
+
+    fileprivate static func requestNumber(_ number: Int) -> Self {
+        return .post([HTTPClientTests.requestNumberKeyName: number])
+    }
+
+    fileprivate static func invalidBody() -> Self {
+        // infinity can't be cast into JSON, so we use it to force a parsing exception. See:
+        // https://developer.apple.com/documentation/foundation/nsjsonserialization?language=objc
+        let nonJSONBody = ["something": Double.infinity]
+
+        return .post(nonJSONBody)
+    }
+
+    /// Creates a `HTTPRequest.Method.post` request with `[String: Any]`.
+    /// - Note: this is for testing only, real requests must use `Encodable`.
+    internal static func post(_ body: [String: Any]) -> Self {
+        return .post(AnyEncodableRequestBody(body))
+    }
+
+}
+
+private struct AnyEncodableRequestBody: HTTPRequestBody, Decodable {
+
+    var body: AnyEncodable
+
+    init(_ body: [String: Any]) {
+        self.body = .init(body)
+    }
+
+    var contentForSignature: [(key: String, value: String?)] { [] }
+
+}
+
+// MARK: - HTTPClient Timeout Manager Tests
+
+/// Tests that verify the HTTPClient correctly communicates with the HTTPRequestTimeoutManager
+/// by asserting on recorded events rather than resulting behavior.
+final class HTTPClientTimeoutManagerTests: BaseHTTPClientTests<MockETagManager, MockHTTPRequestTimeoutManager> {
+
+    override func setUpWithError() throws {
+        self.eTagManager = MockETagManager()
+        let mockTimeoutManager = MockHTTPRequestTimeoutManager(defaultTimeout: defaultRequestTimeout)
+        self.timeoutManager = mockTimeoutManager
+
+        try super.setUpWithError()
+    }
+
+    /// Verifies that when a timeout occurs on the main backend for an endpoint that supports fallback,
+    /// the HTTPClient records the correct events
+    func testRecordsTimeoutOnMainBackendAndOtherOnFallbackSuccessWithFallbackEvent() throws {
+        let request = HTTPRequest(method: .get, path: .getOfferings(appUserID: "test_user_id"))
+
+        // main request times out
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { _ in
+            return .timeoutResponse()
+        }
+
+        // fallback request succeeds
+        let fallbackUrl = try XCTUnwrap(request.path.fallbackUrls.first?.absoluteString)
+        stub(condition: isAbsoluteURLString(fallbackUrl)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Assert that the correct event was recorded
+        expect(self.timeoutManager.recordedResults).to(haveCount(2))
+        expect(self.timeoutManager.recordedResults) == [
+            .mainSourceTimedOut,
+            .other
+        ]
+    }
+
+    /// Verifies that when a timeout occurs on the main source for an endpoint that does NOT support fallback,
+    /// the HTTPClient records the timeout when API sources are enabled (the fallback-support condition
+    /// is dropped in that mode).
+    func testRecordsMainSourceTimedOutWhenTimeoutOccursOnEndpointWithoutFallbackSupport() {
+        let systemInfoUsingAPISources = MockSystemInfo(
+            finishTransactions: true,
+            dangerousSettings: DangerousSettings(
+                autoSyncPurchases: true,
+                internalSettings: DangerousSettings.Internal(usesRemoteConfigAPISources: true)
+            )
+        )
+        let client = self.createClient(systemInfoUsingAPISources)
+        let request = HTTPRequest(method: .get, path: .logIn)
+
+        stub(condition: isPath(request.path)) { _ in
+            return .timeoutResponse()
+        }
+
+        waitUntil { completion in
+            client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Assert that the timeout event was recorded even though the endpoint has no fallback support
+        expect(self.timeoutManager.recordedResults).to(haveCount(1))
+        expect(self.timeoutManager.recordedResults.first) == .mainSourceTimedOut
+    }
+
+    func testRecordsEachAPISourceAttemptOnceWhenMultipleSourcesTimeOut() {
+        let firstHost = "first-api.rc-test.com"
+        let secondHost = "second-api.rc-test.com"
+        let healthChecker = MockSourceHealthChecker()
+        healthChecker.stubbedIsHealthy.value = false
+        let systemInfoUsingAPISources = MockSystemInfo(
+            finishTransactions: true,
+            dangerousSettings: DangerousSettings(
+                autoSyncPurchases: true,
+                internalSettings: DangerousSettings.Internal(usesRemoteConfigAPISources: true)
+            )
+        )
+        let sourceProvider = RemoteConfigSourceProvider(
+            topicStore: APISourceTopicStore(urls: [
+                "https://\(firstHost)/",
+                "https://\(secondHost)/"
+            ])
+        )
+        let client = self.createClient(
+            systemInfoUsingAPISources,
+            apiSourceProvider: sourceProvider,
+            sourceHealthChecker: healthChecker
+        )
+
+        stub(condition: isHost(firstHost) || isHost(secondHost)) { _ in .timeoutResponse() }
+
+        let result: EmptyResponse? = waitUntilValue { completion in
+            client.perform(.init(method: .get, path: .mockPath)) { completion($0) }
+        }
+
+        expect(result).to(beFailure())
+        expect(healthChecker.checkedSourceURLs.value.map(\.host)) == [firstHost, secondHost]
+        expect(self.timeoutManager.recordedHosts) == [firstHost, secondHost]
+        expect(self.timeoutManager.recordedResults) == [.mainSourceTimedOut, .mainSourceTimedOut]
+    }
+
+    /// Verifies that with API sources disabled (the default), a timeout on a no-fallback endpoint does
+    /// not arm the per-host memory, preserving the legacy behavior.
+    func testDoesNotRecordMainSourceTimedOutForNoFallbackEndpointWhenAPISourcesDisabled() {
+        let request = HTTPRequest(method: .get, path: .logIn)
+
+        stub(condition: isPath(request.path)) { _ in
+            return .timeoutResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        expect(self.timeoutManager.recordedResults).to(haveCount(1))
+        expect(self.timeoutManager.recordedResults.first) == .other
+    }
+
+    /// Verifies that when a request fails with a non-timeout error,
+    /// the HTTPClient records the "other" event
+    func testRecordsOtherResultWhenRequestFailsWithoutTimeout() {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+
+        stub(condition: isPath(request.path)) { _ in
+            return .notFoundRespoonse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Assert that the "other" event was recorded
+        expect(self.timeoutManager.recordedResults).to(haveCount(1))
+        expect(self.timeoutManager.recordedResults.first) == .other
+    }
+
+    /// Verifies that when a request fails with a server error that triggers a fallback,
+    /// the HTTPClient records the "other" event for both the main backend failure and fallback success
+    func testRecordsOtherResultWhenRequestFailsWithTriggeringFallbackError() throws {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+
+        // main request fails with server error (triggers fallback)
+        let url = try XCTUnwrap(request.path.url?.absoluteString)
+        stub(condition: isAbsoluteURLString(url)) { _ in
+            return .serverDownResponse()
+        }
+
+        // fallback request succeeds
+        let fallbackUrl = try XCTUnwrap(request.path.fallbackUrls.first?.absoluteString)
+        stub(condition: isAbsoluteURLString(fallbackUrl)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Assert that "other" events were recorded for both main backend failure and fallback success
+        expect(self.timeoutManager.recordedResults).to(haveCount(2))
+        expect(self.timeoutManager.recordedResults) == [.other, .other]
+    }
+
+    /// Verifies that when a request succeeds on the main backend,
+    /// the HTTPClient records the success event
+    func testRecordsSuccessOnMainBackendWhenRequestSucceeds() {
+        let request = HTTPRequest(method: .get, path: .getProductEntitlementMapping)
+
+        stub(condition: isPath(request.path)) { _ in
+            return .emptySuccessResponse()
+        }
+
+        waitUntil { completion in
+            self.client.perform(request) { (_: DataResponse) in completion() }
+        }
+
+        // Assert that the success event was recorded
+        expect(self.timeoutManager.recordedResults).to(haveCount(1))
+        expect(self.timeoutManager.recordedResults.first) == .successOnMainBackend
+    }
+}
+
+extension HTTPClientTests {
+
+    /// A real `RemoteConfigSourceProvider` whose only API source is `https://<host>/`, so the resolved
+    /// base host is unambiguously provider-driven rather than the default `serverHostURL`.
+    fileprivate static func apiSourceProvider(host: String) -> RemoteConfigSourceProvider {
+        return self.apiSourceProvider(hosts: [host])
+    }
+
+    /// A real `RemoteConfigSourceProvider` whose API sources are `https://<host>/` in the given
+    /// (priority) order.
+    fileprivate static func apiSourceProvider(hosts: [String]) -> RemoteConfigSourceProvider {
+        return RemoteConfigSourceProvider(
+            topicStore: APISourceTopicStore(urls: hosts.map { "https://\($0)/" })
+        )
+    }
+
+    /// A `MockSystemInfo` with the `usesRemoteConfigAPISources` dangerous setting enabled, so API source
+    /// host resolution is active. The setting is disabled by default, which would otherwise pin requests
+    /// to `serverHostURL` regardless of the injected provider.
+    fileprivate func systemInfoUsingAPISources() -> MockSystemInfo {
+        return MockSystemInfo(
+            finishTransactions: true,
+            dangerousSettings: DangerousSettings(
+                autoSyncPurchases: true,
+                internalSettings: DangerousSettings.Internal(usesRemoteConfigAPISources: true)
+            )
+        )
+    }
+
+}
+
+/// Re-arms the wrapped provider's exhausted list on every read, simulating a topic rebuild or
+/// interval restart happening while a request walks the list. Used to exercise the API source
+/// attempt cap.
+private final class AlwaysRearmingSourceProvider: RemoteConfigSourceProviderType {
+
+    private let wrapped: RemoteConfigSourceProvider
+
+    init(wrapping provider: RemoteConfigSourceProvider) {
+        self.wrapped = provider
+    }
+
+    func getCurrent(for purpose: RemoteConfigSourceHandle.Purpose) -> RemoteConfigSourceHandle? {
+        self.wrapped.restartIfExhausted(for: purpose)
+        return self.wrapped.getCurrent(for: purpose)
+    }
+
+    func reportUnhealthy(_ handle: RemoteConfigSourceHandle) {
+        self.wrapped.reportUnhealthy(handle)
+    }
+
+    func restart(for purpose: RemoteConfigSourceHandle.Purpose) {
+        self.wrapped.restart(for: purpose)
+    }
+
+    @discardableResult
+    func restartIfExhausted(for purpose: RemoteConfigSourceHandle.Purpose) -> Bool {
+        return self.wrapped.restartIfExhausted(for: purpose)
+    }
+
+}
+
+private final class DelayedSourceHealthChecker: SourceHealthCheckerType, @unchecked Sendable {
+
+    private let checkStarted: XCTestExpectation
+    private let lock = Lock()
+    private var pendingCompletion: (@Sendable (Bool) -> Void)?
+
+    init(checkStarted: XCTestExpectation) {
+        self.checkStarted = checkStarted
+    }
+
+    func checkHealth(ofSourceBaseURL _: URL, completion: @escaping @Sendable (Bool) -> Void) {
+        self.lock.perform {
+            self.pendingCompletion = completion
+        }
+        self.checkStarted.fulfill()
+    }
+
+    func complete(isHealthy: Bool) {
+        let completion = self.lock.perform {
+            let completion = self.pendingCompletion
+            self.pendingCompletion = nil
+            return completion
+        }
+        completion?(isHealthy)
+    }
+
+}
+
+/// A minimal `sources` topic store exposing API sources in order (priority = index), matching the
+/// backend topic shape.
+private final class APISourceTopicStore: RemoteConfigTopicStoreType {
+
+    private let urls: [String]
+
+    init(urls: [String]) {
+        self.urls = urls
+    }
+
+    func topic(_ topic: RemoteConfigTopic) -> RemoteConfiguration.ConfigTopic? {
+        guard topic == .sources else { return nil }
+        return ["api": RemoteConfiguration.ConfigItem(content: [
+            "sources": .array(self.urls.enumerated().map { priority, url in
+                .object([
+                    "url": .string(url),
+                    "priority": .int(priority),
+                    "weight": .int(1)
+                ])
+            })
+        ])]
+    }
+
+}

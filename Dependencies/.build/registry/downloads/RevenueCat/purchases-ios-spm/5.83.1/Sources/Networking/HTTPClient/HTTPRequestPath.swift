@@ -1,0 +1,586 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  HTTPRequestPath.swift
+//
+//  Created by Nacho Soto on 8/8/23.
+
+// swiftlint:disable file_length
+
+import Foundation
+
+protocol HTTPRequestPath {
+
+    /// The base URL for requests to this path.
+    static var serverHostURL: URL { get }
+
+    /// The fallback URLs to use when the main server is down.
+    ///
+    /// Not all endpoints have a fallback URL, but some do.
+    var fallbackUrls: [URL] { get }
+
+    /// Whether requests to this path are authenticated.
+    var authenticated: Bool { get }
+
+    /// Whether requests to this path can be cached using `ETagManager`.
+    var shouldSendEtag: Bool { get }
+
+    /// Whether the endpoint will perform signature verification.
+    var supportsSignatureVerification: Bool { get }
+
+    /// Whether endpoint requires a nonce for signature verification.
+    var needsNonceForSigning: Bool { get }
+
+    /// The name of the endpoint.
+    var name: String { get }
+
+    /// The full relative path for this endpoint.
+    var relativePath: String { get }
+
+    /// The fallback relative path for this endpoint, if any.
+    var fallbackRelativePath: String? { get }
+
+    /// Whether this path resolves its base host from the API source provider (the main-API host
+    /// list with failover) rather than the static `serverHostURL`.
+    var usesAPISources: Bool { get }
+
+    /// Whether this path's `serverHostURL` is a fallback host rather than the main API host.
+    ///
+    /// Requests to such a path are fallback attempts from the very first try, even though
+    /// `HTTPClient`'s own fallback walk never started, so they must not be treated as main-source
+    /// requests when picking a timeout or updating the per-host fail-fast memory.
+    var isFallbackHostPath: Bool { get }
+
+    /// Additional headers specific to this endpoint.
+    var additionalHeaders: HTTPRequest.Headers { get }
+
+    /// Provides endpoint-specific inputs for response signature verification.
+    var responseSignatureContextProvider: ResponseSignatureContextProvider { get }
+}
+
+/// Provides endpoint-specific inputs for backend response signature verification.
+///
+/// Most endpoints use the raw response body and request body. Specialized endpoints can override
+/// either input.
+protocol ResponseSignatureContextProvider {
+
+    /// Returns the response bytes that should be verified against the backend signature.
+    ///
+    /// This may throw when deriving the signed payload requires validating response structure first.
+    func responsePayloadForSignature(from body: Data?, statusCode: HTTPStatusCode) throws -> Data?
+
+    /// Returns the request body component to include in signature parameters, if any.
+    func requestBodyForSignature(for request: HTTPRequest) -> HTTPRequestBody?
+
+}
+
+struct DefaultResponseSignatureContextProvider: ResponseSignatureContextProvider {
+
+    func responsePayloadForSignature(from body: Data?, statusCode: HTTPStatusCode) throws -> Data? {
+        return body
+    }
+
+    func requestBodyForSignature(for request: HTTPRequest) -> HTTPRequestBody? {
+        return request.requestBody
+    }
+
+}
+
+extension HTTPRequestPath {
+
+    var fallbackUrls: [URL] {
+        return []
+    }
+
+    var supportsFallbackURLs: Bool {
+        !fallbackUrls.isEmpty
+    }
+
+    var fallbackRelativePath: String? {
+        return nil
+    }
+
+    var usesAPISources: Bool {
+        return false
+    }
+
+    var isFallbackHostPath: Bool {
+        return false
+    }
+
+    var additionalHeaders: HTTPRequest.Headers {
+        return [:]
+    }
+
+    var responseSignatureContextProvider: ResponseSignatureContextProvider {
+        return DefaultResponseSignatureContextProvider()
+    }
+
+    var url: URL? { return self.url(proxyURL: nil) }
+
+    func url(proxyURL: URL? = nil, apiSourceURL: URL? = nil, fallbackUrlIndex: Int? = nil) -> URL? {
+        let baseURL: URL
+        if let proxyURL {
+            // When a Proxy URL is set, we don't support API sources or fallback URLs
+            guard fallbackUrlIndex == nil, apiSourceURL == nil else {
+                // This is to safe guard against a potential infinite loop if the caller mistakenly
+                // passes a proxyURL together with an apiSourceURL or a fallbackUrlIndex.
+                return nil
+            }
+            baseURL = proxyURL
+        } else if let fallbackUrlIndex {
+            return self.fallbackUrls[safe: fallbackUrlIndex]
+        } else if let apiSourceURL {
+            baseURL = apiSourceURL
+        } else {
+            baseURL = Self.serverHostURL
+        }
+        return URL(string: self.relativePath, relativeTo: baseURL)
+    }
+}
+
+// MARK: - Main paths
+
+extension HTTPRequest {
+
+    enum Path: Hashable {
+
+        case getCustomerInfo(appUserID: String)
+        case getOfferings(appUserID: String)
+        case getIntroEligibility(appUserID: String)
+        case logIn
+        case postAttributionData(appUserID: String)
+        case postOfferForSigning
+        case postReceiptData
+        case postSubscriberAttributes(appUserID: String)
+        case postAdServicesToken(appUserID: String)
+        case health
+        case appHealthReport(appUserID: String)
+        case appHealthReportAvailability(appUserID: String)
+        case getProductEntitlementMapping
+        case getCustomerCenterConfig(appUserID: String)
+        case getVirtualCurrencies(appUserID: String)
+        case postRedeemWebPurchase
+        case postCreateTicket
+        case isPurchaseAllowedByRestoreBehavior(appUserID: String)
+        case rewardVerificationStatus(appUserID: String, clientTransactionID: String)
+        case remoteConfig(domain: String)
+
+    }
+
+    enum FallbackPath: Hashable {
+
+        case remoteConfig(domain: String)
+
+    }
+
+    enum FeatureEventsPath: Hashable {
+
+        case postEvents
+
+    }
+
+    enum DiagnosticsPath: Hashable {
+
+        case postDiagnostics
+
+    }
+
+    enum WebBillingPath: Hashable {
+
+        case getWebOfferingProducts(appUserID: String)
+        case getWebBillingProducts(userId: String, productIds: Set<String>)
+
+    }
+
+    enum AdPath: Hashable {
+
+        case postEvents
+
+    }
+
+}
+
+extension HTTPRequest.Path: HTTPRequestPath {
+
+    static var serverHostURL: URL {
+        SystemInfo.apiBaseURL
+    }
+
+    var usesAPISources: Bool {
+        return true
+    }
+
+    private static let fallbackServerHostURLs = [
+        URL(string: "https://api-production.8-lives-cat.io")
+    ]
+
+    var fallbackRelativePath: String? {
+        switch self {
+        case .getOfferings:
+            return "/v1/offerings"
+        case .getProductEntitlementMapping:
+            return "/v1/product_entitlement_mapping"
+        default:
+            return nil
+        }
+    }
+
+    var fallbackUrls: [URL] {
+        guard let fallbackRelativePath = self.fallbackRelativePath else {
+            return []
+        }
+
+        return Self.fallbackServerHostURLs.compactMap { baseURL in
+            guard let baseURL = baseURL,
+                  let fallbackUrl = URL(string: fallbackRelativePath, relativeTo: baseURL) else {
+                let errorMessage = "Invalid fallback URL configuration for path: \(self.name)"
+                assertionFailure(errorMessage)
+                Logger.error(errorMessage)
+                return nil
+            }
+            return fallbackUrl
+        }
+    }
+
+    var authenticated: Bool {
+        switch self {
+        case .getCustomerInfo,
+                .getOfferings,
+                .getIntroEligibility,
+                .logIn,
+                .postAttributionData,
+                .postOfferForSigning,
+                .postReceiptData,
+                .postSubscriberAttributes,
+                .postAdServicesToken,
+                .postRedeemWebPurchase,
+                .getProductEntitlementMapping,
+                .getCustomerCenterConfig,
+                .getVirtualCurrencies,
+                .appHealthReport,
+                .postCreateTicket,
+                .isPurchaseAllowedByRestoreBehavior,
+                .rewardVerificationStatus,
+                .remoteConfig:
+            return true
+
+        case .health,
+             .appHealthReportAvailability:
+            return false
+        }
+    }
+
+    var shouldSendEtag: Bool {
+        switch self {
+        case .getCustomerInfo,
+                .getOfferings,
+                .getIntroEligibility,
+                .logIn,
+                .postAttributionData,
+                .postOfferForSigning,
+                .postReceiptData,
+                .postSubscriberAttributes,
+                .postAdServicesToken,
+                .postRedeemWebPurchase,
+                .getProductEntitlementMapping,
+                .getCustomerCenterConfig,
+                .getVirtualCurrencies,
+                .appHealthReport,
+                .postCreateTicket,
+                .isPurchaseAllowedByRestoreBehavior,
+                .rewardVerificationStatus:
+            return true
+        case .remoteConfig,
+             .health,
+             .appHealthReportAvailability:
+            return false
+        }
+    }
+
+    var supportsSignatureVerification: Bool {
+        switch self {
+        case .getCustomerInfo,
+                .logIn,
+                .postReceiptData,
+                .health,
+                .getOfferings,
+                .getProductEntitlementMapping,
+                .getVirtualCurrencies,
+                .appHealthReport,
+                .appHealthReportAvailability,
+                .isPurchaseAllowedByRestoreBehavior,
+                .remoteConfig,
+                .rewardVerificationStatus:
+            return true
+        case .getIntroEligibility,
+                .postSubscriberAttributes,
+                .postAttributionData,
+                .postAdServicesToken,
+                .postOfferForSigning,
+                .postRedeemWebPurchase,
+                .getCustomerCenterConfig,
+                .postCreateTicket:
+            return false
+        }
+    }
+
+    var needsNonceForSigning: Bool {
+        switch self {
+        case .getCustomerInfo,
+                .logIn,
+                .postReceiptData,
+                .getVirtualCurrencies,
+                .health,
+                .appHealthReportAvailability,
+                .isPurchaseAllowedByRestoreBehavior,
+                .remoteConfig,
+                .rewardVerificationStatus:
+            return true
+        case .getOfferings,
+                .getIntroEligibility,
+                .postSubscriberAttributes,
+                .postAttributionData,
+                .postAdServicesToken,
+                .postOfferForSigning,
+                .postRedeemWebPurchase,
+                .getProductEntitlementMapping,
+                .getCustomerCenterConfig,
+                .appHealthReport,
+                .postCreateTicket:
+            return false
+        }
+    }
+
+    var responseSignatureContextProvider: ResponseSignatureContextProvider {
+        switch self {
+        case .remoteConfig:
+            return RemoteConfigSignatureContextProvider()
+        default:
+            return DefaultResponseSignatureContextProvider()
+        }
+    }
+
+    var relativePath: String {
+        return "/v1/\(self.pathComponent)"
+    }
+
+    var pathComponent: String {
+        switch self {
+        case let .getCustomerInfo(appUserID):
+            return "subscribers/\(Self.escape(appUserID))"
+
+        case let .getOfferings(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/offerings"
+
+        case let .getIntroEligibility(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/intro_eligibility"
+
+        case let .appHealthReport(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/health_report"
+
+        case let .appHealthReportAvailability(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/health_report_availability"
+
+        case .logIn:
+            return "subscribers/identify"
+
+        case let .postAttributionData(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/attribution"
+
+        case let .postAdServicesToken(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/adservices_attribution"
+
+        case .postOfferForSigning:
+            return "offers"
+
+        case .postReceiptData:
+            return "receipts"
+
+        case let .postSubscriberAttributes(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/attributes"
+
+        case .health:
+            return "health"
+
+        case .getProductEntitlementMapping:
+            return "product_entitlement_mapping"
+
+        case let .getCustomerCenterConfig(appUserID):
+            return "customercenter/\(Self.escape(appUserID))"
+
+        case .postRedeemWebPurchase:
+            return "subscribers/redeem_purchase"
+
+        case let .getVirtualCurrencies(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/virtual_currencies"
+
+        case .postCreateTicket:
+            return "customercenter/support/create-ticket"
+        case let .isPurchaseAllowedByRestoreBehavior(appUserID):
+            return "subscribers/\(Self.escape(appUserID))/restore/eligibility"
+
+        case let .rewardVerificationStatus(appUserID, clientTransactionID):
+            return "subscribers/\(Self.escape(appUserID))/ads/reward_verifications/\(Self.escape(clientTransactionID))"
+
+        case let .remoteConfig(domain):
+            return "config/\(Self.escape(domain))"
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .getCustomerInfo:
+            return "get_customer"
+
+        case .getOfferings:
+            return "get_offerings"
+
+        case .getIntroEligibility:
+            return "get_intro_eligibility"
+
+        case .logIn:
+            return "log_in"
+
+        case .postAttributionData:
+            return "post_attribution"
+
+        case .postAdServicesToken:
+            return "post_adservices_token"
+
+        case .postOfferForSigning:
+            return "post_offer_for_signing"
+
+        case .postReceiptData:
+            return "post_receipt"
+
+        case .postSubscriberAttributes:
+            return "post_attributes"
+
+        case .health:
+            return "post_health"
+
+        case .getProductEntitlementMapping:
+            return "get_product_entitlement_mapping"
+
+        case .getCustomerCenterConfig:
+            return "customer_center"
+
+        case .postRedeemWebPurchase:
+            return "post_redeem_web_purchase"
+
+        case .appHealthReport:
+            return "get_app_health_report"
+
+        case .getVirtualCurrencies:
+            return "get_virtual_currencies"
+
+        case .appHealthReportAvailability:
+            return "get_app_health_report_availability"
+
+        case .postCreateTicket:
+            return "post_create_ticket"
+        case .isPurchaseAllowedByRestoreBehavior:
+            return "post_restore_eligibility"
+
+        case .rewardVerificationStatus:
+            return "get_reward_verification_status"
+
+        case .remoteConfig:
+            return "remote_config"
+        }
+    }
+
+    var additionalHeaders: HTTPRequest.Headers {
+        switch self {
+        case .remoteConfig:
+            return [
+                HTTPClient.RequestHeader.accept.rawValue: HTTPClient.rcContainerFormatAcceptHeaderValue,
+                HTTPClient.RequestHeader.acceptRCElementEncoding.rawValue:
+                    HTTPClient.rcContainerFormatElementEncodingHeaderValue
+            ]
+        default:
+            return [:]
+        }
+    }
+
+    private static func escape(_ appUserID: String) -> String {
+        return appUserID.trimmedAndEscaped
+    }
+}
+
+extension HTTPRequest.FallbackPath: HTTPRequestPath {
+
+    // swiftlint:disable:next force_unwrapping
+    static let serverHostURL = URL(string: "https://api-production.8-lives-cat.io")!
+
+    var isFallbackHostPath: Bool {
+        switch self {
+        case .remoteConfig:
+            return true
+        }
+    }
+
+    var authenticated: Bool {
+        switch self {
+        case .remoteConfig:
+            return true
+        }
+    }
+
+    var shouldSendEtag: Bool {
+        switch self {
+        case .remoteConfig:
+            return true
+        }
+    }
+
+    var supportsSignatureVerification: Bool {
+        switch self {
+        case .remoteConfig:
+            return true
+        }
+    }
+
+    var needsNonceForSigning: Bool {
+        switch self {
+        case .remoteConfig:
+            return false
+        }
+    }
+
+    var responseSignatureContextProvider: ResponseSignatureContextProvider {
+        switch self {
+        case .remoteConfig:
+            return FallbackSignatureContextProvider()
+        }
+    }
+
+    var relativePath: String {
+        switch self {
+        case let .remoteConfig(domain):
+            return "/v1/config/\(domain.trimmedAndEscaped)"
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .remoteConfig:
+            return "remote_config_fallback"
+        }
+    }
+
+    var additionalHeaders: HTTPRequest.Headers {
+        switch self {
+        case .remoteConfig:
+            return [:]
+        }
+    }
+
+}

@@ -1,0 +1,352 @@
+//
+//  Copyright RevenueCat Inc. All Rights Reserved.
+//
+//  Licensed under the MIT License (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      https://opensource.org/licenses/MIT
+//
+//  Backend.swift
+//
+//  Created by Joshua Liebowitz on 8/2/21.
+
+import Foundation
+
+class Backend {
+
+    let identity: IdentityAPI
+    let offerings: OfferingsAPI
+    let webBilling: WebBillingAPI
+    let offlineEntitlements: OfflineEntitlementsAPI
+    let customer: CustomerAPI
+    let internalAPI: InternalAPI
+    let customerCenterConfig: CustomerCenterConfigAPI
+    let redeemWebPurchaseAPI: RedeemWebPurchaseAPI
+    let virtualCurrenciesAPI: VirtualCurrenciesAPI
+    let adsAPI: AdsAPI
+    let remoteConfigAPI: RemoteConfigAPI
+
+    private let config: BackendConfiguration
+
+    convenience init(
+        systemInfo: SystemInfo,
+        httpClientTimeout: NetworkTimeout = .default,
+        eTagManager: ETagManager,
+        operationDispatcher: OperationDispatcher,
+        attributionFetcher: AttributionFetcher,
+        offlineCustomerInfoCreator: OfflineCustomerInfoCreator?,
+        diagnosticsTracker: DiagnosticsTrackerType?,
+        apiSourceProvider: RemoteConfigSourceProviderType?,
+        timeoutManager: HTTPRequestTimeoutManagerType,
+        dateProvider: DateProvider = DateProvider()
+    ) {
+        // One `apiSourceFailover` for both HTTPClients, so they walk one source list and one
+        // health-check cache; handle tokens keep concurrent unhealthy reports from double-advancing it.
+        let apiSourceFailover = apiSourceProvider.map {
+            APISourceFailover(usesRemoteConfigAPISources:
+                                systemInfo.dangerousSettings.internalSettings.usesRemoteConfigAPISources,
+                              sourceProvider: $0,
+                              healthChecker: SourceHealthChecker())
+        }
+        // `timeoutManager` is shared by both HTTPClients (and, outside of `Backend`, by the blob
+        // downloader) so a timeout one of them sees on a host fast-fails the others' next request to that
+        // same host, and a success on any of them clears it for all.
+        let httpClient = HTTPClient(systemInfo: systemInfo,
+                                    eTagManager: eTagManager,
+                                    signing: Signing(apiKey: systemInfo.apiKey, clock: systemInfo.clock),
+                                    diagnosticsTracker: diagnosticsTracker,
+                                    networkTimeout: httpClientTimeout,
+                                    operationDispatcher: OperationDispatcher.default,
+                                    apiSourceFailover: apiSourceFailover,
+                                    timeoutManager: timeoutManager)
+        let config = BackendConfiguration(httpClient: httpClient,
+                                          operationDispatcher: operationDispatcher,
+                                          operationQueue: QueueProvider.createBackendQueue(),
+                                          diagnosticsQueue: QueueProvider.createDiagnosticsQueue(),
+                                          systemInfo: systemInfo,
+                                          offlineCustomerInfoCreator: offlineCustomerInfoCreator,
+                                          dateProvider: dateProvider)
+        let remoteConfigConfig = BackendConfiguration(
+            httpClient: .dedicatedRemoteConfig(systemInfo: systemInfo,
+                                               eTagManager: eTagManager,
+                                               diagnosticsTracker: diagnosticsTracker,
+                                               networkTimeout: httpClientTimeout,
+                                               apiSourceFailover: apiSourceFailover,
+                                               timeoutManager: timeoutManager),
+            operationDispatcher: operationDispatcher,
+            operationQueue: QueueProvider.createRemoteConfigQueue(),
+            diagnosticsQueue: QueueProvider.createDiagnosticsQueue(),
+            systemInfo: systemInfo,
+            offlineCustomerInfoCreator: offlineCustomerInfoCreator,
+            dateProvider: dateProvider)
+        self.init(backendConfig: config,
+                  remoteConfigBackendConfig: remoteConfigConfig,
+                  attributionFetcher: attributionFetcher)
+    }
+
+    convenience init(backendConfig: BackendConfiguration,
+                     remoteConfigBackendConfig: BackendConfiguration? = nil,
+                     attributionFetcher: AttributionFetcher) {
+        let customer = CustomerAPI(backendConfig: backendConfig, attributionFetcher: attributionFetcher)
+        let identity = IdentityAPI(backendConfig: backendConfig)
+        let offerings = OfferingsAPI(backendConfig: backendConfig)
+        let webBilling = WebBillingAPI(backendConfig: backendConfig)
+        let offlineEntitlements = OfflineEntitlementsAPI(backendConfig: backendConfig)
+        let internalAPI = InternalAPI(backendConfig: backendConfig)
+        let customerCenterConfig = CustomerCenterConfigAPI(backendConfig: backendConfig)
+        let redeemWebPurchaseAPI = RedeemWebPurchaseAPI(backendConfig: backendConfig)
+        let virtualCurrenciesAPI = VirtualCurrenciesAPI(backendConfig: backendConfig)
+        let adsAPI = AdsAPI(backendConfig: backendConfig)
+        let remoteConfigAPI = RemoteConfigAPI(backendConfig: remoteConfigBackendConfig ?? backendConfig)
+
+        self.init(backendConfig: backendConfig,
+                  customerAPI: customer,
+                  identityAPI: identity,
+                  offeringsAPI: offerings,
+                  webBillingAPI: webBilling,
+                  offlineEntitlements: offlineEntitlements,
+                  internalAPI: internalAPI,
+                  customerCenterConfig: customerCenterConfig,
+                  redeemWebPurchaseAPI: redeemWebPurchaseAPI,
+                  virtualCurrenciesAPI: virtualCurrenciesAPI,
+                  adsAPI: adsAPI,
+                  remoteConfigAPI: remoteConfigAPI)
+    }
+
+    required init(backendConfig: BackendConfiguration,
+                  customerAPI: CustomerAPI,
+                  identityAPI: IdentityAPI,
+                  offeringsAPI: OfferingsAPI,
+                  webBillingAPI: WebBillingAPI,
+                  offlineEntitlements: OfflineEntitlementsAPI,
+                  internalAPI: InternalAPI,
+                  customerCenterConfig: CustomerCenterConfigAPI,
+                  redeemWebPurchaseAPI: RedeemWebPurchaseAPI,
+                  virtualCurrenciesAPI: VirtualCurrenciesAPI,
+                  adsAPI: AdsAPI,
+                  remoteConfigAPI: RemoteConfigAPI) {
+        self.config = backendConfig
+
+        self.customer = customerAPI
+        self.identity = identityAPI
+        self.offerings = offeringsAPI
+        self.webBilling = webBillingAPI
+        self.offlineEntitlements = offlineEntitlements
+        self.internalAPI = internalAPI
+        self.customerCenterConfig = customerCenterConfig
+        self.redeemWebPurchaseAPI = redeemWebPurchaseAPI
+        self.virtualCurrenciesAPI = virtualCurrenciesAPI
+        self.adsAPI = adsAPI
+        self.remoteConfigAPI = remoteConfigAPI
+    }
+
+    func clearHTTPClientCaches() {
+        self.config.clearCache()
+    }
+
+    func post(attributionData: [String: Any],
+              network: AttributionNetwork,
+              appUserID: String,
+              completion: CustomerAPI.SimpleResponseHandler?) {
+        self.customer.post(attributionData: attributionData,
+                           network: network,
+                           appUserID: appUserID,
+                           completion: completion)
+    }
+
+    func post(adServicesToken: String,
+              appUserID: String,
+              completion: CustomerAPI.SimpleResponseHandler?) {
+        self.customer.post(adServicesToken: adServicesToken,
+                           appUserID: appUserID,
+                           completion: completion)
+    }
+
+    func isPurchaseAllowedByRestoreBehavior(
+        appUserID: String,
+        transactionJWS: String,
+        isAppBackgrounded: Bool,
+        completion: @escaping CustomerAPI.IsPurchaseAllowedByRestoreBehaviorResponseHandler
+    ) {
+        self.customer.isPurchaseAllowedByRestoreBehavior(appUserID: appUserID,
+                                                         transactionJWS: transactionJWS,
+                                                         isAppBackgrounded: isAppBackgrounded,
+                                                         completion: completion)
+    }
+
+    func getCustomerInfo(appUserID: String,
+                         isAppBackgrounded: Bool,
+                         allowComputingOffline: Bool = true,
+                         completion: @escaping CustomerAPI.CustomerInfoResponseHandler) {
+        self.customer.getCustomerInfo(appUserID: appUserID,
+                                      isAppBackgrounded: isAppBackgrounded,
+                                      allowComputingOffline: allowComputingOffline,
+                                      completion: completion)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func post(receipt: EncodedAppleReceipt,
+              productData: ProductRequestData?,
+              transactionData: PurchasedTransactionData,
+              postReceiptSource: PostReceiptSource,
+              observerMode: Bool,
+              // Value at the time of the purchase (which might come from the `LocalTransactionMetadataStore`)
+              originalPurchaseCompletedBy: PurchasesAreCompletedBy?,
+              appTransaction: String? = nil,
+              associatedTransactionId: String? = nil,
+              sdkOriginated: Bool = false,
+              appUserID: String,
+              containsAttributionData: Bool = false,
+              completion: @escaping CustomerAPI.CustomerInfoResponseHandler) {
+        self.customer.post(receipt: receipt,
+                           productData: productData,
+                           transactionData: transactionData,
+                           postReceiptSource: postReceiptSource,
+                           observerMode: observerMode,
+                           originalPurchaseCompletedBy: originalPurchaseCompletedBy,
+                           appTransaction: appTransaction,
+                           associatedTransactionId: associatedTransactionId,
+                           sdkOriginated: sdkOriginated,
+                           appUserID: appUserID,
+                           containsAttributionData: containsAttributionData,
+                           completion: completion)
+    }
+
+    func post(subscriberAttributes: SubscriberAttribute.Dictionary,
+              appUserID: String,
+              completion: CustomerAPI.SimpleResponseHandler?) {
+        self.customer.post(subscriberAttributes: subscriberAttributes, appUserID: appUserID, completion: completion)
+    }
+
+    #if DEBUG
+    /// Checks if the SDK should log the status of the health report to the console.
+    /// - Parameter appUserID: An `appUserID` that allows the Backend to check for health report availability
+    /// - Returns: Whether the health report should be reported to the console for the given `appUserID`.
+    func healthReportAvailabilityRequest(appUserID: String) async throws -> HealthReportAvailability {
+        try await Async.call { (completion: @escaping (Result<HealthReportAvailability, BackendError>) -> Void) in
+            self.internalAPI.healthReportAvailabilityRequest(
+                appUserID: appUserID,
+                completion: completion
+            )
+        }
+    }
+
+    /// Call the `/health_report` endpoint and perform a full validation of the SDK's configuration
+    /// - Parameter appUserID: An `appUserID` that allows the Backend to fetch offerings
+    /// - Returns: A report with all validation checks along with their status
+    func healthReportRequest(appUserID: String) async throws -> HealthReport {
+        try await Async.call { (completion: @escaping (Result<HealthReport, BackendError>) -> Void) in
+            self.internalAPI.healthReportRequest(appUserID: appUserID, completion: completion)
+        }
+    }
+    #endif
+}
+
+extension Backend {
+
+    /// - Throws: `NetworkError`
+    func healthRequest(signatureVerification: Bool) async throws {
+        try await Async.call { completion in
+            self.internalAPI.healthRequest(signatureVerification: signatureVerification) { error in
+                completion(.init(error))
+            }
+        }
+    }
+
+}
+
+// @unchecked because:
+// - Class is not `final` (it's mocked). This implicitly makes subclasses `Sendable` even if they're not thread-safe.
+extension Backend: @unchecked Sendable {}
+
+// MARK: - Internal
+
+extension Backend {
+
+    typealias ResponseHandler<Response> = @Sendable (Swift.Result<Response, BackendError>) -> Void
+
+}
+
+extension Backend {
+
+    @objc var signatureVerificationEnabled: Bool {
+        return self.config.httpClient.signatureVerificationEnabled
+    }
+
+}
+
+extension Backend {
+
+    enum QueueProvider {
+
+        static func createBackendQueue() -> OperationQueue {
+            let operationQueue = OperationQueue()
+            operationQueue.name = "RC Backend Queue"
+            operationQueue.maxConcurrentOperationCount = 1
+            return operationQueue
+        }
+
+        static func createDiagnosticsQueue() -> OperationQueue {
+            let operationQueue = OperationQueue()
+            operationQueue.name = "RC Diagnostics Queue"
+            operationQueue.maxConcurrentOperationCount = 1
+            operationQueue.qualityOfService = .background
+            return operationQueue
+        }
+
+        static func createRemoteConfigQueue() -> OperationQueue {
+            let operationQueue = OperationQueue()
+            operationQueue.name = "RC Remote Config Queue"
+            operationQueue.maxConcurrentOperationCount = 1
+            return operationQueue
+        }
+
+    }
+
+}
+
+private extension HTTPClient {
+
+    // swiftlint:disable:next function_parameter_count
+    static func dedicatedRemoteConfig(
+        systemInfo: SystemInfo,
+        eTagManager: ETagManager,
+        diagnosticsTracker: DiagnosticsTrackerType?,
+        networkTimeout: NetworkTimeout,
+        apiSourceFailover: APISourceFailoverType?,
+        timeoutManager: HTTPRequestTimeoutManagerType
+    ) -> HTTPClient {
+        HTTPClient(systemInfo: systemInfo,
+                   eTagManager: eTagManager,
+                   signing: Signing(apiKey: systemInfo.apiKey, clock: systemInfo.clock),
+                   diagnosticsTracker: diagnosticsTracker,
+                   networkTimeout: networkTimeout,
+                   operationDispatcher: OperationDispatcher.default,
+                   apiSourceFailover: apiSourceFailover,
+                   timeoutManager: timeoutManager)
+    }
+
+}
+
+// MARK: - Testing extensions
+
+extension Backend {
+
+    var networkTimeout: TimeInterval {
+        return self.config.httpClient.timeout
+    }
+
+    var requestTimeoutManagerBaseTimeout: TimeInterval {
+        return self.config.httpClient.requestTimeoutManager.timeout(host: nil,
+                                                                    isFallbackHostRequest: false,
+                                                                    endpointSupportsFallbackURLs: false,
+                                                                    isProxied: false,
+                                                                    reTieredTimeoutsEnabled: true)
+    }
+
+    var offlineCustomerInfoEnabled: Bool {
+        return self.config.offlineCustomerInfoCreator != nil
+    }
+
+}

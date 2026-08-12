@@ -1,0 +1,408 @@
+//
+//  Created by RevenueCat.
+//  Copyright © 2020 RevenueCat. All rights reserved.
+//
+
+import Foundation
+@_spi(Internal) @testable import RevenueCat
+
+class MockDeviceCache: DeviceCache {
+
+    convenience init(systemInfo: SystemInfo = MockSystemInfo(finishTransactions: false)) {
+        self.init(systemInfo: systemInfo,
+                  userDefaults: MockUserDefaults())
+    }
+
+    // MARK: - generic methods
+
+    var stubbedUpdateValues: [Any] = []
+    var invokedUpdateKey: Bool = false
+    var invokedUpdateKeyParameters: [(key: String, newValue: Any)] = []
+
+    // MARK: appUserID
+
+    var stubbedAppUserID: String?
+    var stubbedLegacyAppUserID: String?
+    var userIDStoredInCache: String?
+    var stubbedAnonymous: Bool = false
+    var clearCachesCalledOldUserID: String?
+    var clearCachesCalleNewUserID: String?
+    var invokedClearCachesForAppUserID: Bool = false
+
+    override func clearCaches(oldAppUserID: String, andSaveWithNewUserID newUserID: String) {
+        clearCachesCalledOldUserID = oldAppUserID
+        clearCachesCalleNewUserID = newUserID
+        userIDStoredInCache = newUserID
+        invokedClearCachesForAppUserID = true
+    }
+
+    override var cachedLegacyAppUserID: String? {
+        return stubbedLegacyAppUserID
+    }
+
+    override var cachedAppUserID: String? {
+        if stubbedAppUserID != nil {
+            return stubbedAppUserID
+        } else {
+            return userIDStoredInCache
+        }
+    }
+
+    override func cache(appUserID: String) {
+        userIDStoredInCache = appUserID
+    }
+
+    // MARK: customerInfo
+    // Backed by `Atomic` because the SDK reads and writes this state from multiple threads
+    // concurrently (e.g. configuration + foreground-delegate sync), which would otherwise
+    // corrupt the underlying dictionary. Exposed via computed properties so call sites are unchanged.
+    private let _cacheCustomerInfoCount: Atomic<Int> = .init(0)
+    var cacheCustomerInfoCount: Int {
+        get { self._cacheCustomerInfoCount.value }
+        set { self._cacheCustomerInfoCount.value = newValue }
+    }
+    private let _cachedCustomerInfoCount: Atomic<Int> = .init(0)
+    var cachedCustomerInfoCount: Int {
+        get { self._cachedCustomerInfoCount.value }
+        set { self._cachedCustomerInfoCount.value = newValue }
+    }
+    private let _clearCustomerInfoCacheTimestampCount: Atomic<Int> = .init(0)
+    var clearCustomerInfoCacheTimestampCount: Int {
+        get { self._clearCustomerInfoCacheTimestampCount.value }
+        set { self._clearCustomerInfoCacheTimestampCount.value = newValue }
+    }
+    private let _setCustomerInfoCacheTimestampToNowCount: Atomic<Int> = .init(0)
+    var setCustomerInfoCacheTimestampToNowCount: Int {
+        get { self._setCustomerInfoCacheTimestampToNowCount.value }
+        set { self._setCustomerInfoCacheTimestampToNowCount.value = newValue }
+    }
+    var stubbedIsCustomerInfoCacheStale = false
+    private let _cachedCustomerInfo: Atomic<[String: Data]> = .init([:])
+    var cachedCustomerInfo: [String: Data] {
+        get { self._cachedCustomerInfo.value }
+        set { self._cachedCustomerInfo.value = newValue }
+    }
+
+    override func cache(customerInfo: Data, appUserID: String) {
+        self._cacheCustomerInfoCount.modify { $0 += 1 }
+        self._cachedCustomerInfo.modify { $0[appUserID] = customerInfo }
+    }
+
+    override func cachedCustomerInfoData(appUserID: String) -> Data? {
+        self._cachedCustomerInfoCount.modify { $0 += 1 }
+        return self._cachedCustomerInfo.value[appUserID]
+    }
+
+    override func isCustomerInfoCacheStale(appUserID: String, isAppBackgrounded: Bool) -> Bool {
+        return stubbedIsCustomerInfoCacheStale
+    }
+
+    override func clearCustomerInfoCacheTimestamp(appUserID: String) {
+        self._clearCustomerInfoCacheTimestampCount.modify { $0 += 1 }
+    }
+
+    // MARK: offerings
+
+    var cacheOfferingsCount = 0
+    var latestCachePreferredLocales: [String]?
+    var cacheOfferingsInMemoryCount = 0
+    var clearInMemoryOfferingsCacheCount = 0
+    var clearCachedOfferingsCount = 0
+    var clearOfferingsCacheTimestampCount = 0
+    var setOfferingsCacheTimestampToNowCount = 0
+    var stubbedIsOfferingsCacheStale = false
+    var stubbedOfferings: Offerings?
+    var stubbedCachedOfferingsData: Data?
+    var latestCachedOfferingsContents: Offerings.Contents?
+    var latestCachedOfferingsFetchResult: OfferingsFetchResult?
+    var stubbedOfferingCacheStatus: CacheStatus?
+
+    override var cachedOfferings: Offerings? {
+        return stubbedOfferings
+    }
+
+    override func cache(
+        offerings: Offerings,
+        fetchResult: OfferingsFetchResult? = nil,
+        preferredLocales: [String],
+        appUserID: String
+    ) {
+        self.cacheOfferingsCount += 1
+        self.latestCachePreferredLocales = preferredLocales
+        self.latestCachedOfferingsContents = fetchResult?.contents ?? offerings.contents
+        self.latestCachedOfferingsFetchResult = fetchResult
+        self.stubbedOfferings = offerings
+    }
+    override func cacheInMemory(offerings: Offerings) {
+        self.cacheOfferingsInMemoryCount += 1
+        self.stubbedOfferings = offerings
+    }
+
+    override func clearInMemoryOfferingsCache() {
+        self.clearInMemoryOfferingsCacheCount += 1
+        self.stubbedOfferings = nil
+    }
+
+    override func isOfferingsCacheStale(isAppBackgrounded: Bool) -> Bool {
+        return self.stubbedIsOfferingsCacheStale
+    }
+
+    override func forceOfferingsCacheStale() {
+        self.clearOfferingsCacheTimestampCount += 1
+    }
+
+    override func clearOfferingsCache(appUserID: String) {
+        self.clearCachedOfferingsCount += 1
+        self.stubbedOfferings = nil
+        self.stubbedCachedOfferingsData = nil
+    }
+
+    override func cachedOfferingsContents(
+        appUserID: String,
+        decodingMode: OfferingsResponse.DecodingMode = .withPaywallComponents
+    ) -> Offerings.Contents? {
+        if let stubbedCachedOfferingsData {
+            let decoder = OfferingsResponse.makeDecoder(decodingMode: decodingMode)
+            return try? decoder.decode(Offerings.Contents.self, from: stubbedCachedOfferingsData)
+        }
+        return nil
+    }
+
+    override func offeringsCacheStatus(isAppBackgrounded: Bool) -> CacheStatus {
+        return self.stubbedOfferingCacheStatus ?? super.offeringsCacheStatus(isAppBackgrounded: isAppBackgrounded)
+    }
+
+    // MARK: SubscriberAttributes
+
+    var invokedStore = false
+    var invokedStoreCount = 0
+    var invokedStoreParameters: (attribute: SubscriberAttribute, appUserID: String)?
+    var invokedStoreParametersList = [(attribute: SubscriberAttribute, appUserID: String)]()
+
+    override func store(subscriberAttribute: SubscriberAttribute, appUserID: String) {
+        invokedStore = true
+        invokedStoreCount += 1
+        invokedStoreParameters = (subscriberAttribute, appUserID)
+        invokedStoreParametersList.append((subscriberAttribute, appUserID))
+    }
+
+    var invokedStoreSubscriberAttributes = false
+    var invokedStoreSubscriberAttributesCount = 0
+    var invokedStoreSubscriberAttributesParameters: (attributesByKey: [String: SubscriberAttribute], appUserID: String)?
+    var invokedStoreSubscriberAttributesParametersList = [(attributesByKey: [String: SubscriberAttribute],
+        appUserID: String)]()
+
+    override func store(subscriberAttributesByKey: [String: SubscriberAttribute], appUserID: String) {
+        invokedStoreSubscriberAttributes = true
+        invokedStoreSubscriberAttributesCount += 1
+        invokedStoreSubscriberAttributesParameters = (subscriberAttributesByKey, appUserID)
+        invokedStoreSubscriberAttributesParametersList.append((subscriberAttributesByKey, appUserID))
+    }
+
+    var invokedSubscriberAttribute = false
+    var invokedSubscriberAttributeCount = 0
+    var invokedSubscriberAttributeParameters: (attributeKey: String, appUserID: String)?
+    var invokedSubscriberAttributeParametersList = [(attributeKey: String, appUserID: String)]()
+    var stubbedSubscriberAttributeResult: SubscriberAttribute!
+
+    override func subscriberAttribute(attributeKey: String, appUserID: String) -> SubscriberAttribute? {
+        invokedSubscriberAttribute = true
+        invokedSubscriberAttributeCount += 1
+        invokedSubscriberAttributeParameters = (attributeKey, appUserID)
+        invokedSubscriberAttributeParametersList.append((attributeKey, appUserID))
+        return stubbedSubscriberAttributeResult
+    }
+
+    var invokedUnsyncedAttributesByKey = false
+    var invokedUnsyncedAttributesByKeyCount = 0
+    var invokedUnsyncedAttributesByKeyParameters: (appUserID: String, Void)?
+    var invokedUnsyncedAttributesByKeyParametersList = [(appUserID: String, Void)]()
+    var stubbedUnsyncedAttributesByKeyResult: [String: SubscriberAttribute]! = [:]
+
+    override func unsyncedAttributesByKey(appUserID: String) -> [String: SubscriberAttribute] {
+        invokedUnsyncedAttributesByKey = true
+        invokedUnsyncedAttributesByKeyCount += 1
+        invokedUnsyncedAttributesByKeyParameters = (appUserID, ())
+        invokedUnsyncedAttributesByKeyParametersList.append((appUserID, ()))
+        return stubbedUnsyncedAttributesByKeyResult
+    }
+
+    var invokedCleanupSubscriberAttributes = false
+    var invokedCleanupSubscriberAttributesCount = 0
+
+    override func cleanupSubscriberAttributes() {
+        invokedCleanupSubscriberAttributes = true
+        invokedCleanupSubscriberAttributesCount += 1
+    }
+
+    var invokedNumberOfUnsyncedAttributes = false
+    var invokedNumberOfUnsyncedAttributesCount = 0
+    var invokedNumberOfUnsyncedAttributesParameters: (appUserID: String, Void)?
+    var invokedNumberOfUnsyncedAttributesParametersList = [(appUserID: String, Void)]()
+    var stubbedNumberOfUnsyncedAttributesResult: Int! = 0
+
+    override func numberOfUnsyncedAttributes(appUserID: String) -> Int {
+        invokedNumberOfUnsyncedAttributes = true
+        invokedNumberOfUnsyncedAttributesCount += 1
+        invokedNumberOfUnsyncedAttributesParameters = (appUserID, ())
+        invokedNumberOfUnsyncedAttributesParametersList.append((appUserID, ()))
+        return stubbedNumberOfUnsyncedAttributesResult
+    }
+
+    var invokedUnsyncedAttributesForAllUsers = false
+    var invokedUnsyncedAttributesForAllUsersCount = 0
+    var stubbedUnsyncedAttributesForAllUsersResult: [String: [String: SubscriberAttribute]]!
+
+    override func unsyncedAttributesForAllUsers() -> [String: [String: SubscriberAttribute]] {
+        invokedUnsyncedAttributesForAllUsers = true
+        invokedUnsyncedAttributesForAllUsersCount += 1
+        return stubbedUnsyncedAttributesForAllUsersResult
+    }
+
+    var invokedDeleteAttributesIfSynced = false
+    var invokedDeleteAttributesIfSyncedCount = 0
+    var invokedDeleteAttributesIfSyncedParameters: (appUserID: String?, Void)?
+    var invokedDeleteAttributesIfSyncedParametersList: [String] = []
+
+    override func deleteAttributesIfSynced(appUserID: String) {
+        invokedDeleteAttributesIfSynced = true
+        invokedDeleteAttributesIfSyncedCount += 1
+        invokedDeleteAttributesIfSyncedParameters = (appUserID, ())
+        invokedDeleteAttributesIfSyncedParametersList.append(appUserID)
+    }
+
+    var invokedClearCustomerInfoCache = false
+    var invokedClearCustomerInfoCacheCount = 0
+    var invokedClearCustomerInfoCacheParameters: (appUserID: String, Void)?
+    var invokedClearCustomerInfoCacheParametersList = [(appUserID: String, Void)]()
+
+    override func clearCustomerInfoCache(appUserID: String) {
+        self._cachedCustomerInfo.modify { $0.removeValue(forKey: appUserID) }
+        invokedClearCustomerInfoCache = true
+        invokedClearCustomerInfoCacheCount += 1
+        invokedClearCustomerInfoCacheParameters = (appUserID, ())
+        invokedClearCustomerInfoCacheParametersList.append((appUserID, ()))
+    }
+
+    var invokedClearLatestNetworkAndAdvertisingIdsSent = false
+    var invokedClearLatestNetworkAndAdvertisingIdsSentCount = 0
+    var invokedClearLatestNetworkAndAdvertisingIdsSentParameters: (appUserID: String?, Void)?
+    var invokedClearLatestNetworkAndAdvertisingIdsSentParametersList = [(appUserID: String?, Void)]()
+
+    override func clearLatestNetworkAndAdvertisingIdsSent(appUserID: String?) {
+        invokedClearLatestNetworkAndAdvertisingIdsSent = true
+        invokedClearLatestNetworkAndAdvertisingIdsSentCount += 1
+        invokedClearLatestNetworkAndAdvertisingIdsSentParameters = (appUserID, ())
+        invokedClearLatestNetworkAndAdvertisingIdsSentParametersList.append((appUserID, ()))
+    }
+
+    var invokedSetLatestNetworkAndAdvertisingIdsSent = false
+    var invokedSetLatestNetworkAndAdvertisingIdsSentCount = 0
+    var invokedSetLatestNetworkAndAdvertisingIdsSentParameters:
+        (adIdsByNetwork: [AttributionNetwork: String], appUserID: String?)?
+    var invokedSetLatestNetworkAndAdvertisingIdsSentParametersList =
+        [(adIdsByNetwork: [AttributionNetwork: String], appUserID: String?)]()
+
+    override func set(latestAdvertisingIdsByNetworkSent: [AttributionNetwork: String], appUserID: String) {
+        invokedSetLatestNetworkAndAdvertisingIdsSent = true
+        invokedSetLatestNetworkAndAdvertisingIdsSentCount += 1
+        invokedSetLatestNetworkAndAdvertisingIdsSentParameters = (latestAdvertisingIdsByNetworkSent, appUserID)
+        invokedSetLatestNetworkAndAdvertisingIdsSentParametersList.append(
+            (latestAdvertisingIdsByNetworkSent, appUserID)
+        )
+    }
+
+    override func latestAdvertisingIdsByNetworkSent(appUserID: String) -> [AttributionNetwork: String] {
+        return invokedSetLatestNetworkAndAdvertisingIdsSentParameters?.adIdsByNetwork ?? [:]
+    }
+
+    var invokedCopySubscriberAttributes = false
+    var invokedCopySubscriberAttributesCount = 0
+    var invokedCopySubscriberAttributesParameters: (oldAppUserID: String, newAppUserID: String)?
+    var invokedCopySubscriberAttributesParametersList = [(oldAppUserID: String, newAppUserID: String)]()
+
+    override func copySubscriberAttributes(oldAppUserID: String, newAppUserID: String) {
+        invokedCopySubscriberAttributes = true
+        invokedCopySubscriberAttributesCount += 1
+        invokedCopySubscriberAttributesParameters = (oldAppUserID, newAppUserID)
+        invokedCopySubscriberAttributesParametersList.append((oldAppUserID, newAppUserID))
+    }
+
+    var stubbedIsProductEntitlementMappingCacheStale = false
+
+    override var isProductEntitlementMappingCacheStale: Bool {
+        return self.stubbedIsProductEntitlementMappingCacheStale
+    }
+
+    // MARK: - CachedSyncedSK2TransactionIDs
+    private var cachedSyncedSK2TransactionIDs: [UInt64] = []
+
+    var invokedReadCachedSyncedSK2ObserverModeTransactionIDs = false
+    override func cachedSyncedSK2ObserverModeTransactionIDs() -> [UInt64] {
+        invokedReadCachedSyncedSK2ObserverModeTransactionIDs = true
+        return cachedSyncedSK2TransactionIDs
+    }
+
+    var invokedRegisterNewSyncedSK2ObserverModeTransactionID = false
+    override func registerNewSyncedSK2ObserverModeTransactionIDs(_ ids: [UInt64]) {
+        invokedRegisterNewSyncedSK2ObserverModeTransactionID = true
+        cachedSyncedSK2TransactionIDs.append(contentsOf: ids)
+    }
+
+    // MARK: - Virtual Currencies
+    var invokedIsVirtualCurrenciesCacheStale = false
+    var invokedIsVirtualCurrenciesCacheStaleCount = 0
+    var invokedIsVirtualCurrenciesCacheStaleParametersList: [(String, Bool)] = []
+    var stubbedIsVirtualCurrenciesCacheStale: Bool?
+    override func isVirtualCurrenciesCacheStale(
+        appUserID: String,
+        isAppBackgrounded: Bool
+    ) -> Bool {
+        invokedIsVirtualCurrenciesCacheStale = true
+        invokedIsVirtualCurrenciesCacheStaleCount += 1
+        invokedIsVirtualCurrenciesCacheStaleParametersList.append((appUserID, isAppBackgrounded))
+
+        if let stubbedIsVirtualCurrenciesCacheStale {
+            return stubbedIsVirtualCurrenciesCacheStale
+        } else {
+            return super.isVirtualCurrenciesCacheStale(
+                appUserID: appUserID,
+                isAppBackgrounded: isAppBackgrounded
+            )
+        }
+    }
+
+    var invokedCachedVirtualCurrenciesDataForAppUserID: Bool = false
+    var invokedCachedVirtualCurrenciesDataForAppUserIDCount: Int = 0
+    var invokedCachedVirtualCurrenciesDataForAppUserIDParametersList: [String] = []
+    var stubbedCachedVirtualCurrenciesDataForAppUserID: Data?
+    override func cachedVirtualCurrenciesData(forAppUserID appUserID: String) -> Data? {
+        invokedCachedVirtualCurrenciesDataForAppUserID = true
+        invokedCachedVirtualCurrenciesDataForAppUserIDCount += 1
+        invokedCachedVirtualCurrenciesDataForAppUserIDParametersList.append(appUserID)
+
+        if let stubbedCachedVirtualCurrenciesDataForAppUserID {
+            return stubbedCachedVirtualCurrenciesDataForAppUserID
+        } else {
+            return super.cachedVirtualCurrenciesData(forAppUserID: appUserID)
+        }
+    }
+
+    var invokedCacheVirtualCurrencies = false
+    var invokedCacheVirtualCurrenciesCount = 0
+    var invokedCacheVirtualCurrenciesParametersList: [(Data, String)] = []
+    override func cache(virtualCurrencies: Data, appUserID: String) {
+        invokedCacheVirtualCurrencies = true
+        invokedCacheVirtualCurrenciesCount += 1
+        invokedCacheVirtualCurrenciesParametersList.append((virtualCurrencies, appUserID))
+    }
+
+    var invokedClearVirtualCurrenciesCache = false
+    var invokedClearVirtualCurrenciesCacheCount = 0
+    override func clearVirtualCurrenciesCache(appUserID: String) {
+        invokedClearVirtualCurrenciesCache = true
+        invokedClearVirtualCurrenciesCacheCount += 1
+    }
+}
+
+extension MockDeviceCache: @unchecked Sendable {}

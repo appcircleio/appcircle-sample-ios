@@ -1,0 +1,109 @@
+# Xcode
+#
+# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+
+## User settings
+**/xcuserdata/
+
+## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
+*.xcscmblueprint
+*.xccheckout
+
+## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+build/
+DerivedData/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+.idea/
+Carthage
+.DS_Store
+.ruby-version
+.bundle/
+.build/
+vendor/
+CarthageUploads
+*.bck
+**/fastlane/report.xml
+**/fastlane/test_output/
+builds/
+Pods/
+IntegrationTests/CarthageInstallation/Cartfile.resolved
+scan_derived_data/
+generated_docs/
+
+# Local clone of `paywall-preview-resources` repo to be available for tests.
+Tests/paywall-preview-resources
+
+# Local clone of `paywall-rendering-validation` repo to be available for tests.
+Tests/paywall-rendering-validation
+
+
+# Recorded V1 template snapshots (uploaded to Emerge, not stored in git)
+Tests/RevenueCatUITests/Templates/__Snapshots__
+
+# SPM
+
+# SwiftPM/Xcode-generated workspace metadata (machine-specific, avoid noisy diffs and CI variance)
+AdapterSDKs/RevenueCatAdMob/.swiftpm/
+
+# This is the "SPM" scheme, which is duplicated with the scheme in the project
+# and that breaks Carthage because it appears twice in `xcodebuild -list`
+.swiftpm/xcode/xcshareddata/xcschemes/RevenueCat.xcscheme
+
+Examples/**/Package.resolved
+Tuist/Package.resolved
+.package.resolved
+
+Tests/InstallationTests/SPMInstallation/SPMInstallation.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+Tests/InstallationTests/ReceiptParserInstallation/ReceiptParserInstallation.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+Tests/InstallationTests/XcodeDirectInstallation/XcodeDirectInstallation.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# fastlane
+fastlane/.env
+.vscode/settings.json
+
+# Local build settings
+Local.xcconfig
+
+# CI Build settings
+CI.xcconfig
+
+# Gets created when Cursor is used with the sswg Swift extension
+/.index-build/
+
+# xcode-build-server
+/buildServer.json
+
+*.orig
+
+# tuist
+**/Derived/
+
+# Tuist workspaces
+RevenueCat-Tuist.xcworkspace/
+Projects/**/*.xcodeproj
+Examples/**/*.xcodeproj
+
+Projects/**/xcshareddata/
+Projects/**/*.xcworkspacedata
+
+Examples/**/.xcworkspacedata
+Examples/**/*.xcscheme
+Examples/**/xcshareddata/**
+
+# Avoid xcscheme pollution when integrating SDK with SPM
+# We can't avoid the whole folder yet because RC and RCUI need to be tested through the package, rather than the workspace
+.swiftpm/xcode/xcshareddata/xcschemes/ReceiptParser.xcscheme
+.swiftpm/xcode/xcshareddata/xcschemes/RevenueCat_CustomEntitlementComputation.xcscheme
+.swiftpm/xcode/xcshareddata/xcschemes/RevenueCatAdMob.xcscheme
+Tests/TestingApps/PaywallsTester/PaywallsTester/PaywallsTester.storekit
+
+# Claude Code
+.claude/

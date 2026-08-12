@@ -1,0 +1,301 @@
+//
+//  File.swift
+//  
+//
+//  Created by Josh Holtz on 6/11/24.
+//
+// swiftlint:disable missing_docs
+import Foundation
+
+@_spi(Internal) public protocol PaywallComponentBase: Codable, Sendable, Hashable, Equatable {}
+
+@_spi(Internal) public enum PaywallComponent: Codable, Sendable, Hashable, Equatable {
+
+    case text(TextComponent)
+    case image(ImageComponent)
+    case icon(IconComponent)
+    case stack(StackComponent)
+    case button(ButtonComponent)
+    case package(PackageComponent)
+    case purchaseButton(PurchaseButtonComponent)
+    case stickyFooter(StickyFooterComponent)
+    case timeline(TimelineComponent)
+
+    case tabs(TabsComponent)
+    case tabControl(TabControlComponent)
+    case tabControlButton(TabControlButtonComponent)
+    case tabControlToggle(TabControlToggleComponent)
+
+    case carousel(CarouselComponent)
+
+    case video(VideoComponent)
+
+    case countdown(CountdownComponent)
+
+    case webView(WebViewComponent)
+
+    case fallbackHeader
+
+    public enum ComponentType: String, Codable, Sendable {
+
+        case text
+        case image
+        case icon
+        case stack
+        case button
+        case package
+        case purchaseButton = "purchase_button"
+        case stickyFooter = "sticky_footer"
+        case timeline
+
+        case tabs
+        case tabControl = "tab_control"
+        case tabControlButton = "tab_control_button"
+        case tabControlToggle = "tab_control_toggle"
+
+        case carousel
+        case video
+        case countdown
+        case webView = "web_view"
+        case fallbackHeader = "fallback_header"
+
+    }
+
+}
+
+@_spi(Internal) public extension PaywallComponent {
+    typealias LocaleID = String
+    typealias LocalizationDictionary = [String: PaywallComponentsData.LocalizationData]
+    typealias LocalizationKey = String
+    typealias ColorHex = String
+}
+
+@_spi(Internal) extension PaywallComponent {
+
+    enum CodingKeys: String, CodingKey {
+
+        case type
+        case fallback
+        case protocolVersion
+
+    }
+
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .text(let component):
+            try container.encode(ComponentType.text, forKey: .type)
+            try component.encode(to: encoder)
+        case .image(let component):
+            try container.encode(ComponentType.image, forKey: .type)
+            try component.encode(to: encoder)
+        case .icon(let component):
+            try container.encode(ComponentType.icon, forKey: .type)
+            try component.encode(to: encoder)
+        case .stack(let component):
+            try container.encode(ComponentType.stack, forKey: .type)
+            try component.encode(to: encoder)
+        case .button(let component):
+            try container.encode(ComponentType.button, forKey: .type)
+            try component.encode(to: encoder)
+        case .package(let component):
+            try container.encode(ComponentType.package, forKey: .type)
+            try component.encode(to: encoder)
+        case .purchaseButton(let component):
+            try container.encode(ComponentType.purchaseButton, forKey: .type)
+            try component.encode(to: encoder)
+        case .stickyFooter(let component):
+            try container.encode(ComponentType.stickyFooter, forKey: .type)
+            try component.encode(to: encoder)
+        case .timeline(let component):
+            try container.encode(ComponentType.timeline, forKey: .type)
+            try component.encode(to: encoder)
+        case .tabs(let component):
+            try container.encode(ComponentType.tabs, forKey: .type)
+            try component.encode(to: encoder)
+        case .tabControl(let component):
+            try container.encode(ComponentType.tabControl, forKey: .type)
+            try component.encode(to: encoder)
+        case .tabControlButton(let component):
+            try container.encode(ComponentType.tabControlButton, forKey: .type)
+            try component.encode(to: encoder)
+        case .tabControlToggle(let component):
+            try container.encode(ComponentType.tabControlToggle, forKey: .type)
+            try component.encode(to: encoder)
+        case .carousel(let component):
+            try container.encode(ComponentType.carousel, forKey: .type)
+            try component.encode(to: encoder)
+        case .video(let component):
+            try container.encode(ComponentType.video, forKey: .type)
+            try component.encode(to: encoder)
+        case .countdown(let component):
+            try container.encode(ComponentType.countdown, forKey: .type)
+            try component.encode(to: encoder)
+        case .webView(let component):
+            try container.encode(ComponentType.webView, forKey: .type)
+            try component.encode(to: encoder)
+        case .fallbackHeader:
+            try container.encode(ComponentType.fallbackHeader, forKey: .type)
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Decode the raw string for the `type` field
+        let typeString = try container.decode(String.self, forKey: .type)
+
+        // Attempt to convert raw string into our `ComponentType` enum
+        if let type = ComponentType(rawValue: typeString) {
+            self = try Self.decodeType(from: decoder, type: type)
+        } else {
+            // If `typeString` is unknown, render the author-provided fallback.
+            self = try Self.decodeFallback(from: decoder, reason: .unknownType(typeString))
+        }
+    }
+
+    /// Explains why a component is being decoded through its author-provided `fallback`, so the
+    /// resulting `DecodingError` points at the real cause when no usable fallback is present.
+    private enum FallbackReason {
+
+        /// The component `type` string is not recognized by this SDK.
+        case unknownType(String)
+
+        /// A `web_view` component this SDK cannot service (e.g. unsupported platform or
+        /// `protocol_version`). The associated value describes the specific cause.
+        case unserviceableWebView(String)
+
+        /// Error description used when no `fallback` is present.
+        var missingFallbackDescription: String {
+            switch self {
+            case let .unknownType(typeString):
+                return "Failed to decode unknown type \"\(typeString)\" without a fallback."
+            case let .unserviceableWebView(detail):
+                return "Failed to decode web_view component without a fallback: \(detail)."
+            }
+        }
+
+        /// Error description used when a `fallback` is present but cannot be decoded.
+        var failedFallbackDescription: String {
+            switch self {
+            case let .unknownType(typeString):
+                return "Failed to decode fallback for unknown type \"\(typeString)\"."
+            case let .unserviceableWebView(detail):
+                return "Failed to decode fallback for web_view component: \(detail)."
+            }
+        }
+
+    }
+
+    /// Decodes the author-provided `fallback` component, used both for unknown component types and
+    /// for known components this SDK version cannot service (e.g. an unsupported `web_view`
+    /// `protocol_version`). Throws a `reason`-specific error if no usable fallback is present.
+    private static func decodeFallback(from decoder: Decoder, reason: FallbackReason) throws -> PaywallComponent {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        guard container.contains(.fallback) else {
+            let context = DecodingError.Context(
+                codingPath: container.codingPath,
+                debugDescription: reason.missingFallbackDescription
+            )
+            throw DecodingError.dataCorrupted(context)
+        }
+
+        do {
+            return try container.decode(PaywallComponent.self, forKey: .fallback)
+        } catch DecodingError.valueNotFound {
+            let context = DecodingError.Context(
+                codingPath: container.codingPath,
+                debugDescription: reason.missingFallbackDescription
+            )
+            throw DecodingError.dataCorrupted(context)
+        } catch {
+            let context = DecodingError.Context(
+                codingPath: container.codingPath,
+                debugDescription: reason.failedFallbackDescription,
+                underlyingError: error
+            )
+            throw DecodingError.dataCorrupted(context)
+        }
+    }
+
+    // swiftlint:disable:next cyclomatic_complexity
+    private static func decodeType(from decoder: Decoder, type: ComponentType) throws -> PaywallComponent {
+        switch type {
+        case .text:
+            return .text(try TextComponent(from: decoder))
+        case .image:
+            return .image(try ImageComponent(from: decoder))
+        case .icon:
+            return .icon(try IconComponent(from: decoder))
+        case .stack:
+            return .stack(try StackComponent(from: decoder))
+        case .button:
+            return .button(try ButtonComponent(from: decoder))
+        case .package:
+            return .package(try PackageComponent(from: decoder))
+        case .purchaseButton:
+            return .purchaseButton(try PurchaseButtonComponent(from: decoder))
+        case .stickyFooter:
+            return .stickyFooter(try StickyFooterComponent(from: decoder))
+        case .timeline:
+            return .timeline(try TimelineComponent(from: decoder))
+        case .tabs:
+            return .tabs(try TabsComponent(from: decoder))
+        case .tabControl:
+            return .tabControl(try TabControlComponent(from: decoder))
+        case .tabControlButton:
+            return .tabControlButton(try TabControlButtonComponent(from: decoder))
+        case .tabControlToggle:
+            return .tabControlToggle(try TabControlToggleComponent(from: decoder))
+        case .carousel:
+            return .carousel(try CarouselComponent(from: decoder))
+        case .video:
+            return .video(try VideoComponent(from: decoder))
+        case .countdown:
+            return .countdown(try CountdownComponent(from: decoder))
+        case .webView:
+            return try Self.decodeWebView(from: decoder)
+        case .fallbackHeader:
+            return .fallbackHeader
+        }
+    }
+
+    private static func decodeWebView(from decoder: Decoder) throws -> PaywallComponent {
+        #if os(watchOS) || os(tvOS) || !canImport(WebKit)
+        return try Self.decodeFallback(
+            from: decoder,
+            reason: .unserviceableWebView("web views are not supported on this platform")
+        )
+        #else
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Gate a valid raw version before decoding the full model. This lets a newer protocol use
+        // its fallback without requiring this SDK to understand that protocol's remaining fields.
+        let protocolVersion = try container.decode(Int.self, forKey: .protocolVersion)
+        guard protocolVersion == WebViewComponent.supportedProtocolVersion else {
+            return try Self.decodeFallback(
+                from: decoder,
+                reason: .unserviceableWebView(
+                    "unsupported protocol_version \(protocolVersion) " +
+                    "(this SDK supports \(WebViewComponent.supportedProtocolVersion))"
+                )
+            )
+        }
+
+        let component = try WebViewComponent(from: decoder)
+        if let validationError = component.configurationValidationError {
+            let context = DecodingError.Context(
+                codingPath: decoder.codingPath,
+                debugDescription: validationError
+            )
+            throw DecodingError.dataCorrupted(context)
+        }
+
+        return .webView(component)
+        #endif
+    }
+
+}
