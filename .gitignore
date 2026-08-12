@@ -1,0 +1,4 @@
+
+# SwiftPM
+.build/
+Dependencies/.build/
