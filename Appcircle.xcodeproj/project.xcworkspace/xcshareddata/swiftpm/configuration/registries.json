@@ -1,0 +1,34 @@
+{
+  "authentication": {},
+  "registries": {
+    "[default]": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    },
+    "airbnb": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    },
+    "lzell": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    },
+    "evgenyneu": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    },
+    "firebase": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    },
+    "RevenueCat": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    },
+    "revenuecat": {
+      "supportsAvailability": false,
+      "url": "https://nexus.appcircle.io/repository/swift-spm-test-ios/"
+    }
+  },
+  "version": 1
+}
