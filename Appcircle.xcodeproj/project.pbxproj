@@ -14,7 +14,6 @@
 		450FAD77277C4BBF00C3060D /* AppcircleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD76277C4BBF00C3060D /* AppcircleTests.swift */; };
 		450FAD81277C4BBF00C3060D /* AppcircleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD80277C4BBF00C3060D /* AppcircleUITests.swift */; };
 		450FAD83277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450FAD82277C4BBF00C3060D /* AppcircleUITestsLaunchTests.swift */; };
-		450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */ = {isa = PBXBuildFile; productRef = 450FAD91277C4D4D00C3060D /* FizzBuzzKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,7 +60,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				450FAD92277C4D4D00C3060D /* FizzBuzzKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,7 +179,6 @@
 			);
 			name = Appcircle;
 			packageProductDependencies = (
-				450FAD91277C4D4D00C3060D /* FizzBuzzKit */,
 			);
 			productName = Appcircle;
 			productReference = 450FAD62277C4BBC00C3060D /* Appcircle.app */;
@@ -757,12 +754,6 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		450FAD91277C4D4D00C3060D /* FizzBuzzKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = FizzBuzzKit;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 450FAD5A277C4BBC00C3060D /* Project object */;
 }
