@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 55;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -263,6 +263,7 @@
 				6740E0592E60398B00A7475E /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 				6740E05A2E6039A000A7475E /* XCRemoteSwiftPackageReference "swift-algorithms" */,
 				6740E05B2E6039B700A7475E /* XCRemoteSwiftPackageReference "swift-protobuf" */,
+				67AB5C7D3074D851004ECE00 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = 450FAD63277C4BBC00C3060D /* Products */;
 			projectDirPath = "";
@@ -746,6 +747,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.31.0;
+			};
+		};
+		67AB5C7D3074D851004ECE00 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "firebase.firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.19.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
