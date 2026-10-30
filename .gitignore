@@ -25,3 +25,7 @@ DerivedData/
 
 ## Gcc Patch
 /*.gcno
+
+## CocoaPods
+# Pods are installed on CI with `pod install`; Podfile.lock pins the versions.
+Pods/
