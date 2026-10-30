@@ -2,6 +2,7 @@ platform :ios, '17.0'
 
 target 'Appcircle' do
   use_frameworks!
+  inhibit_all_warnings!
 
   pod 'SDWebImage'
 
