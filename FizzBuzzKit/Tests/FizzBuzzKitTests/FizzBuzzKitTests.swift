@@ -55,4 +55,29 @@ final class FizzBuzzKitTests: XCTestCase {
         XCTAssertEqual(result, "Even")
     }
 
+    func testNegativeNumber() throws {
+        let fbkit = FizzBuzzKit()
+        let result = fbkit.handle(number: -15)
+        XCTAssertEqual(result, "0")
+    }
+
+    func testEmptyRules() throws {
+        let rules: [(Int, String)] = []
+        let fbkit = FizzBuzzKit(rules: rules)
+        let result = fbkit.handle(number: 15)
+        XCTAssertEqual(result, "15")
+    }
+
+    func testRuleOrder() throws {
+        let fbkit = FizzBuzzKit(rules: [(5, "Buzz"), (3, "Fizz")])
+        let result = fbkit.handle(number: 15)
+        XCTAssertEqual(result, "BuzzFizz")
+    }
+
+    func testEmptyNumbers() throws {
+        let fbkit = FizzBuzzKit()
+        let result = fbkit.handle(numbers: [])
+        XCTAssertEqual(result, [])
+    }
+
 }
