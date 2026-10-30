@@ -50,6 +50,16 @@
                ReferencedContainer = "container:Appcircle.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "FizzBuzzKitTests"
+               BuildableName = "FizzBuzzKitTests"
+               BlueprintName = "FizzBuzzKitTests"
+               ReferencedContainer = "container:FizzBuzzKit">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

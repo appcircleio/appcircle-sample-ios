@@ -69,6 +69,27 @@ class AppcircleUITests: XCTestCase {
         XCTAssertEqual(resultText.label,"4")
     }
     
+    func testInitialState() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Appcircle"].exists)
+        XCTAssertTrue(app.textFields["Enter a number"].exists)
+        XCTAssertEqual(app.staticTexts["result"].label, "0")
+    }
+
+    func testNonNumericInput() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let numberCell = app.textFields["Enter a number"]
+        let resultText = app.staticTexts["result"]
+
+        numberCell.tap()
+        numberCell.typeText("abc")
+        XCTAssertEqual(resultText.label,"0")
+    }
+
     func testFail() throws {
         let app = XCUIApplication()
         app.launch()
